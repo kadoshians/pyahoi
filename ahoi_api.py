@@ -6,6 +6,7 @@ import http.client
 from datetime import datetime
 import uuid
 
+
 class APIConnector:
 
     def __init__(self, config):
@@ -28,7 +29,6 @@ class APIConnector:
 
         if self.reg_token is None or self.reg_token == "":
             self.generate_registration_token()
-
 
     def generate_registration_token(self):
         credentials = self.client_id + ":" + self.client_secret
@@ -57,28 +57,32 @@ class APIConnector:
         res = requests.post(self.url + '/ahoi/api/v2/registration', headers=headers)
         res_dict = json.loads(res.text)
         self.install_token = res_dict['installation']
-
+        print('installation token: ' + self.install_token)
 
     def get_banking_token(self):
+        # print('get banking token')
+
+        # Expected request
+        # {
+        #     "installationId":"<INSTALLATION_ID>",
+        #     "nonce":"0wYWLarLDBrWU7B2I1Go4A==",
+        #     "timestamp":"2018-11-01T11:32:44.413Z"
+        # }
+
+        nonce = uuid.uuid4().hex
+        # print(nonce)
+        current_time = datetime.now().utcnow()
+        current_time_string = current_time.strftime('%Y-%m-%dT%H:%M:%S.%fZ')[:-4]+'Z'
+        # print(current_time_string)
+
+        ###### Hier muss ein Fehler sein ######
+        x_auth_ahoi_json = "{\"installationId\":\"%s\",\"nonce\":\"%s\",\"timestamp\":\"%s\"}" % (
+        self.install_token, nonce, current_time_string)
+        # print(x_auth_ahoi_json)
+
         credentials = self.client_id + ":" + self.client_secret
 
         credentials_base64 = base64.b64encode(credentials.encode()).decode()
-
-        current_time = datetime.now().isoformat()
-
-        nonce = uuid.uuid1().hex
-        print(nonce[:16])
-        nonce_base64 = base64.b64encode(nonce[:16].encode()).decode()
-
-        ###### Hier muss ein Fehler sein ######
-        x_auth_ahoi_json = "{\"installationId\":\"%s\",\"nonce\":\"%s\",\"timestamp\":\"%s\"}" %(self.install_token, nonce_base64, current_time)
-
-        #x_auth_ahoi_json = {
-        #    'installationId':  self.install_token,
-        #    'nonce': nonce_base64,
-        #    'timestamp':  current_time
-        #}
-
         x_auth_base64 = base64.urlsafe_b64encode(str(x_auth_ahoi_json).encode()).decode()
 
         headers = {
@@ -94,13 +98,17 @@ class APIConnector:
 
         res = requests.post(self.url + '/auth/v1/oauth/token', headers=headers, data=data)
         res_dict = json.loads(res.text)
-        print(res_dict)
-        #self.bank_token = res_dict['installation']
+        # print(res_dict)
+        self.bank_token = res_dict['access_token']
+        print('banking token: ' + self.bank_token)
 
     def get_all_provider(self):
+        # print('all providers')
         headers = {
             'authorization': 'Bearer ' + self.bank_token
         }
+
+        # print(headers)
 
         res = requests.get(self.url + '/ahoi/api/v2/providers', headers=headers)
         res_dict = json.loads(res.text)
@@ -147,8 +155,6 @@ class APIConnector:
         res_dict = json.loads(res.text)
         return(res_dict)
 
-
-
     def get_all_transactions(self, access_id, account_id):
         headers = {
             'authorization': 'Bearer ' + self.bank_token
@@ -159,6 +165,7 @@ class APIConnector:
         res_dict = json.loads(res.text)
         return(res_dict)
 
+
 if __name__ == '__main__':
     state = 'IN_PROGRESS'
     config = configparser.ConfigParser()
@@ -166,7 +173,7 @@ if __name__ == '__main__':
 
     api_connector = APIConnector(config)
     api_connector.user_registration()
-    #api_connector.get_banking_token()
+    api_connector.get_banking_token()
     providers_list = api_connector.get_all_provider()
 
     provider_id = providers_list[0]['id']
