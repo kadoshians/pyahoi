@@ -45,12 +45,13 @@ class APIConnector:
             'password': self.pin
         }
         res = requests.post(self.url + '/auth/v1/oauth/token?', headers=headers, data=data)
+
         res_dict = json.loads(res.text)
-        self.reg_token = res_dict["access_token"]
+        self.reg_token = res_dict['access_token']
 
     def user_registration(self):
         headers = {
-            'authorization': "Bearer " + self.reg_token
+            'authorization': 'Bearer ' + self.reg_token
         }
 
         res = requests.post(self.url + '/ahoi/api/v2/registration', headers=headers)
@@ -66,9 +67,11 @@ class APIConnector:
         current_time = datetime.now().isoformat()
 
         nonce = uuid.uuid1().hex
-        nonce_base64 = base64.b64encode(nonce[:15].encode()).decode()
+        print(nonce[:16])
+        nonce_base64 = base64.b64encode(nonce[:16].encode()).decode()
 
-        x_auth_ahoi_json = "{\"installationId\":\"%s\",\"nonce\":\"%s\",\"timestamp\":\"%s\"}" % (self.install_token, nonce_base64, current_time)
+        ###### Hier muss ein Fehler sein ######
+        x_auth_ahoi_json = "{\"installationId\":\"%s\",\"nonce\":\"%s\",\"timestamp\":\"%s\"}" %(self.install_token, nonce_base64, current_time)
 
         #x_auth_ahoi_json = {
         #    'installationId':  self.install_token,
@@ -96,7 +99,7 @@ class APIConnector:
 
     def get_all_provider(self):
         headers = {
-            'authorization': "Bearer " + self.bank_token
+            'authorization': 'Bearer ' + self.bank_token
         }
 
         res = requests.get(self.url + '/ahoi/api/v2/providers', headers=headers)
@@ -110,42 +113,74 @@ class APIConnector:
 
         res = requests.get(self.url + '/ahoi/api/v2/providers/' + provider_id, headers=headers)
         res_dict = json.loads(res.text)
-        #print(res_dict)
+        return(res_dict['accessDescription'])
 
     def create_new_access(self, provider_id):
         headers = {
-            'Authorization': "Bearer " + self.bank_token,
+            'Authorization': 'Bearer ' + self.bank_token,
             'Content-Type': 'application/json'
         }
-        data = {
-            "providerId": provider_id,
-            "type": "BankAccess",
-            "accessFields": {
-                "USERNAME": self.username,
-                "PIN": self.pin
-            }
-        }
+
+        data = "{\"providerId\":\"%s\",\"type\":\"BankAccess\",\"accessFields\":{\"USERNAME\":\"%s\",\"PIN\":\"%s\"}}" %(provider_id, self.username, self.pin)
+
         res = requests.post(self.url + '/ahoi/api/v2/accesses/async', headers=headers, data=data)
         res_dict = json.loads(res.text)
-        print(res_dict)
+        return(res_dict['id'], res_dict['state'])
 
-    def get_task_response(self):
+    def get_access_state(self, task_id):
         headers = {
-            'authorization': "Bearer " + self.bank_token
+            'Authorization': 'Bearer ' + self.bank_token,
         }
 
-        res = requests.post(self.url + '/ahoi/api/v2/accesses/async', headers=headers)
+        res = requests.get(self.url + '/ahoi/api/v2/tasks/' + task_id, headers=headers)
+
         res_dict = json.loads(res.text)
-        print(res_dict)
+        return(res_dict['accessId'])
+
+    def get_all_accounts(self, access_id):
+        headers = {
+            'Authorization': 'Bearer ' + self.bank_token,
+        }
+
+        res = requests.get(self.url + '/ahoi/api/v2/accesses/' + access_id + '/accounts', headers=headers)
+
+        res_dict = json.loads(res.text)
+        return(res_dict)
+
+
+
+    def get_all_transactions(self, access_id, account_id):
+        headers = {
+            'authorization': 'Bearer ' + self.bank_token
+        }
+
+        res = requests.get(self.url + '/ahoi/api/v2/accesses/' + access_id + '/accounts/' + account_id + '/transactions', headers=headers)
+
+        res_dict = json.loads(res.text)
+        return(res_dict)
 
 if __name__ == '__main__':
+    state = 'IN_PROGRESS'
     config = configparser.ConfigParser()
     config.read('conf.ini')
 
     api_connector = APIConnector(config)
-    #api_connector.user_registration()
+    api_connector.user_registration()
     #api_connector.get_banking_token()
     providers_list = api_connector.get_all_provider()
+
     provider_id = providers_list[0]['id']
-    api_connector.get_provider_access_data(provider_id=provider_id)
-    api_connector.create_new_access(provider_id=provider_id)
+
+    access_description_dict = api_connector.get_provider_access_data(provider_id=provider_id)
+
+    while state == 'IN_PROGRESS':
+        task_id, state = api_connector.create_new_access(provider_id=provider_id)
+
+    access_id = api_connector.get_access_state(task_id=task_id)
+
+    accounts_dict = api_connector.get_all_accounts(access_id=access_id)
+
+    account_id = accounts_dict[0]['id']
+
+    transactions_list = api_connector.get_all_transactions(access_id=access_id, account_id=account_id)
+    print(transactions_list)
