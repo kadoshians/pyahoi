@@ -43,4 +43,4 @@ Ein weiterer Anwendungsfall Beschreibt der nachfolgende Graph.
 Dieser greift dass Konzept des *Local Hero* auf, bei dem der Kunde durch regionale Einkäufe nicht nur die Händler in der Region unterstützt, sondern auch die Region selbst. 
 Gewährleistet wird dies, durch die Kombination aus *Geoinformationen* und den Ortsangaben einzelner Transaktione, die wir über die *AHOI API* abrufen.
 
-![Graph3](images/Germany.png "TKMaxx")
+![Graph3](images/germany.png "Germany")
