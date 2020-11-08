@@ -2,7 +2,6 @@ import configparser
 import requests
 import base64
 import json
-import http.client
 from datetime import datetime
 import uuid
 import time

@@ -3,7 +3,7 @@
 
 Dieses Projekt ist das Backend für die Idee KÂDO by Kadoshians.
 Die Idee ist im Rahmen des [Symbioticon 2020 Hackathons](https://symbioticon.de/ "Symbioticon 2020 Hackathons") entstanden und ist ein modernes Konzept der klassischen Stempelkarte.
-Nutzer sammeln Stempel auf KÂDOS (japanisch für Karten), die im Wallet auf den Handys gepsiechert werden.
+Nutzer sammeln Stempel auf KÂDOS (japanisch für Karten), die im Wallet auf den Handys gespeichert werden.
 Dieses Projekt baut auf den APIs von [AHOI](https://www.starfinanz-ahoi.de/de/ "AHOI") und [your pass](https://yourpass.eu "your pass") auf.
 Die Stempel können durch Abscannen des QR Codes im Geschäft oder durch Analyse der Zahlungen mit EC-Karte oder Mastercard gesammelt werden.
 
@@ -38,3 +38,9 @@ Diese Regel kann einfach und ohne Kundeninteraktion mit der AHOI API verifiziert
 Das zweite Beispiel zeigt die klassische Stemplekarten Regel, die sich natürlich auch mit AHOI verifizieren lässt. Für jeden Einkauf sammelt der Kunde Stempel (dargestellt durch die sich verstärkende Hintergundfarbe) und bei voller Anzahl, hier 6 Stempel, ist der Kunde berechtigt die Belohnung zu erhalten (hellgrüner Bereich).
 
 ![Graph2](images/tkmaxx_stempel.png "TKMaxx")
+
+Ein weiterer Anwendungsfall Beschreibt der nachfolgende Graph. 
+Dieser greift dass Konzept des *Local Hero* auf, bei dem der Kunde durch regionale Einkäufe nicht nur die Händler in der Region unterstützt, sondern auch die Region selbst. 
+Gewährleistet wird dies, durch die Kombination aus *Geoinformationen* und den Ortsangaben einzelner Transaktione, die wir über die *AHOI API* abrufen.
+
+![Graph3](images/Germany.png "TKMaxx")
