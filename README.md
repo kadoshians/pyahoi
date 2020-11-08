@@ -14,8 +14,17 @@ Der Prozess für das Sammeln aus Nutzersicht umfasst folgende Schritte:
 4. Nutzer freut sich :-)
 
 ## KÂDO in dem Wallet
-
+Der Nutzer kann sein KÂDO direkt im Wallet nutzen und von dem Händler scannen lassen.
+Hierfür ist auf jedem KÂDO ein QR-Code angezeigt, mit der ein Händler den Besuch uns weitergeben kann.
 ![KÂDO](images/kado.png "KÂDO")
+
+## Notification über Kartenzahlung
+Noch einfacher wird das Sammeln mit KÂDO, wenn der Nutzer das eigene Bankkonto verknüpft.
+Dann bekommen Nutzer direkt eine Notification, sobald ein Umsatz bei dem Händler erkannt wurde.
+Bei dem Einkauf muss nichts gescannt werden und niemand kann den Stempel vergessen.
 ![Notification](images/notification.png "Notification")
 
 ## Verwendung der AHOI Api
+Für die Analyse der Transaktionen auf dem Konto nutzen wir die *AHOI API*.
+Die einzenen Umsätze werden mit dem KÂDO des Geschäfts verbunden, so dass jeder Einkauf auch berücksichtigt wird.
+Auf Basis der bisherigen Transaktionen können weitere KÂDOS von Händlern, die man gerne besucht, empfohlen werden.
