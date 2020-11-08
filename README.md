@@ -1,5 +1,5 @@
 # pyahoi für KÂDO
-![Logo](images/logo.png "Logo")
+![Logo](images/logo-free.png "Logo")
 
 Dieses Projekt ist das Backend für die Idee KÂDO by Kadoshians.
 Die Idee ist im Rahmen des (https://symbioticon.de/ "Symbiotion 2020 Hackathons") entstanden und ist ein modernes Konzept der klassischen Stempelkarte.
@@ -18,7 +18,7 @@ Der Nutzer kann sein KÂDO direkt im Wallet nutzen und von dem Händler scannen 
 Hierfür ist auf jedem KÂDO ein QR-Code angezeigt, mit der ein Händler den Besuch uns weitergeben kann.
 ![KÂDO](images/kado.png "KÂDO")
 
-## Notification über Kartenzahlung
+## Notification bei Kartenzahlung
 Noch einfacher wird das Sammeln mit KÂDO, wenn der Nutzer das eigene Bankkonto verknüpft.
 Dann bekommen Nutzer direkt eine Notification, sobald ein Umsatz bei dem Händler erkannt wurde.
 Bei dem Einkauf muss nichts gescannt werden und niemand kann den Stempel vergessen.
