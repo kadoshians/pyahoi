@@ -5,6 +5,7 @@ import json
 import http.client
 from datetime import datetime
 import uuid
+import time
 
 
 class APIConnector:
@@ -112,7 +113,8 @@ class APIConnector:
 
         res = requests.get(self.url + '/ahoi/api/v2/providers', headers=headers)
         res_dict = json.loads(res.text)
-        return(res_dict)
+        print('providers: {}'.format(len(res_dict)))
+        return res_dict
 
     def get_provider_access_data(self, provider_id):
         headers = {
@@ -121,7 +123,7 @@ class APIConnector:
 
         res = requests.get(self.url + '/ahoi/api/v2/providers/' + provider_id, headers=headers)
         res_dict = json.loads(res.text)
-        return(res_dict['accessDescription'])
+        return res_dict['accessDescription']
 
     def create_new_access(self, provider_id):
         headers = {
@@ -133,17 +135,15 @@ class APIConnector:
 
         res = requests.post(self.url + '/ahoi/api/v2/accesses/async', headers=headers, data=data)
         res_dict = json.loads(res.text)
-        return(res_dict['id'], res_dict['state'])
+        return res_dict['id'], res_dict['state']
 
     def get_access_state(self, task_id):
         headers = {
             'Authorization': 'Bearer ' + self.bank_token,
         }
-
         res = requests.get(self.url + '/ahoi/api/v2/tasks/' + task_id, headers=headers)
-
         res_dict = json.loads(res.text)
-        return(res_dict['accessId'])
+        return res_dict
 
     def get_all_accounts(self, access_id):
         headers = {
@@ -153,7 +153,7 @@ class APIConnector:
         res = requests.get(self.url + '/ahoi/api/v2/accesses/' + access_id + '/accounts', headers=headers)
 
         res_dict = json.loads(res.text)
-        return(res_dict)
+        return res_dict
 
     def get_all_transactions(self, access_id, account_id):
         headers = {
@@ -163,11 +163,10 @@ class APIConnector:
         res = requests.get(self.url + '/ahoi/api/v2/accesses/' + access_id + '/accounts/' + account_id + '/transactions', headers=headers)
 
         res_dict = json.loads(res.text)
-        return(res_dict)
+        return res_dict
 
 
-if __name__ == '__main__':
-    state = 'IN_PROGRESS'
+def get_transactions():
     config = configparser.ConfigParser()
     config.read('conf.ini')
 
@@ -179,15 +178,28 @@ if __name__ == '__main__':
     provider_id = providers_list[0]['id']
 
     access_description_dict = api_connector.get_provider_access_data(provider_id=provider_id)
+    # print(access_description_dict)
 
-    while state == 'IN_PROGRESS':
+    in_progress = True
+    while in_progress:
         task_id, state = api_connector.create_new_access(provider_id=provider_id)
+        in_progress = (state == 'IN_PROGRESS')
+    print('taskId: {}, state: {}'.format(task_id, state))
 
-    access_id = api_connector.get_access_state(task_id=task_id)
+    in_progress = True
+    while in_progress:
+        response = api_connector.get_access_state(task_id=task_id)
+        in_progress = (response['state'] == 'IN_PROGRESS')
+        time.sleep(2)
+    access_id = response['accessId']
+    print('accessId: {}'.format(access_id))
 
-    accounts_dict = api_connector.get_all_accounts(access_id=access_id)
+    accounts = api_connector.get_all_accounts(access_id=access_id)
+    print(accounts)
 
-    account_id = accounts_dict[0]['id']
+    transactions = dict()
+    for account in accounts:
+        account_id = account['id']
+        transactions[account_id] = api_connector.get_all_transactions(access_id=access_id, account_id=account_id)
 
-    transactions_list = api_connector.get_all_transactions(access_id=access_id, account_id=account_id)
-    print(transactions_list)
+    return transactions
