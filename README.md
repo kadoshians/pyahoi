@@ -1,5 +1,5 @@
 # pyahoi für KÂDO
-![Logo](images/logo-free.png "Logo")
+![Logo](images/logo.png "Logo")
 
 Dieses Projekt ist das Backend für die Idee KÂDO by Kadoshians.
 Die Idee ist im Rahmen des (https://symbioticon.de/ "Symbiotion 2020 Hackathons") entstanden und ist ein modernes Konzept der klassischen Stempelkarte.
