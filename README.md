@@ -29,18 +29,22 @@ Für die Analyse der Transaktionen auf dem Konto nutzen wir die *AHOI API*.
 Die einzenen Umsätze werden mit dem KÂDO des Geschäfts verbunden, so dass jeder Einkauf auch berücksichtigt wird.
 Auf Basis der bisherigen Transaktionen können weitere KÂDOS von Händlern, die man gerne besucht, empfohlen werden.
 
+### SMART KÂDOS mit AHOI
 Die folgenden Graphen wurden direkt mit Hilfe der AHOI API und den dort enthaltenen Datensätzen erzeugt und illustrieren unsere Verküpfung aus AHOI und KADO.
 Der erste Graph zeigt eine Regel, die einen Kunden genau dann belohnt, wenn er in 4 aufeinanderfolgenden Wochen Kunde war. 
 Diese Regel kann einfach und ohne Kundeninteraktion mit der AHOI API verifiziert werden. Die rot hinterlegten Wochen sind die Wochen, in denen der Bonus, in diesem Fall bei Shell, gültig ist. 
 
 ![Graph1](images/shell_4_weeks.png "Shell")
 
-Das zweite Beispiel zeigt die klassische Stemplekarten Regel, die sich natürlich auch mit AHOI verifizieren lässt. Für jeden Einkauf sammelt der Kunde Stempel (dargestellt durch die sich verstärkende Hintergundfarbe) und bei voller Anzahl, hier 6 Stempel, ist der Kunde berechtigt die Belohnung zu erhalten (hellgrüner Bereich).
+### Klassische Stempelkarte über AHOI
+Das zweite Beispiel zeigt die klassische Regel für Stempelkarten, die sich natürlich auch mit AHOI verifizieren lässt. Für jeden Einkauf sammelt der Kunde Stempel (dargestellt durch die sich verstärkende Hintergundfarbe) und bei voller Anzahl, hier 6 Stempel, ist der Kunde berechtigt die Belohnung zu erhalten (hellgrüner Bereich).
 
 ![Graph2](images/tkmaxx_stempel.png "TKMaxx")
 
-Ein weiterer Anwendungsfall Beschreibt der nachfolgende Graph. 
+
+### Local Hero
+Ein weiterer Anwendungsfall beschreibt die nachfolgende Grafik. 
 Dieser greift dass Konzept des *Local Hero* auf, bei dem der Kunde durch regionale Einkäufe nicht nur die Händler in der Region unterstützt, sondern auch die Region selbst. 
-Gewährleistet wird dies, durch die Kombination aus *Geoinformationen* und den Ortsangaben einzelner Transaktione, die wir über die *AHOI API* abrufen.
+Gewährleistet wird dies, durch die Kombination aus *Geoinformationen* und den Ortsangaben einzelner Transaktionen, die wir über die *AHOI API* abrufen.
 
 ![Graph3](images/germany.png "Germany")
