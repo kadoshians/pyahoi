@@ -44,7 +44,7 @@ Das zweite Beispiel zeigt die klassische Regel für Stempelkarten, die sich nat�
 
 ### Local Hero
 Ein weiterer Anwendungsfall beschreibt die nachfolgende Grafik. 
-Dieser greift dass Konzept des *Local Hero* auf, bei dem der Kunde durch regionale Einkäufe nicht nur die Händler in der Region unterstützt, sondern auch die Region selbst. 
-Gewährleistet wird dies, durch die Kombination aus *Geoinformationen* und den Ortsangaben einzelner Transaktionen, die wir über die *AHOI API* abrufen.
+Diese greift das Konzept des *Local Hero* auf, bei dem der Kunde durch regionale Einkäufe nicht nur die Händler in der Region unterstützt, sondern auch die Region selbst. 
+Gewährleistet wird dies, durch die Kombination aus *Geoinformationen* und den Ortsangaben einzelner Transaktionen, welche wir über die *AHOI API* abrufen.
 
 ![Graph3](images/germany.png "Germany")
