@@ -1,18 +1,24 @@
-import ahoi_connector
+import ahoi_functions
 import pandas as pd
 import json
 from collections import defaultdict
-
+from ahoi_functions import APIFunctions
+import configparser
 
 def fetch_transactions():
-    transactions = ahoi_connector.get_transactions()
-    for account in transactions:
-        if not len(transactions[account]):
-            with open('data/' + account + '.json', 'w') as file:
-                json.dump(transactions[account], file)
+    config = configparser.ConfigParser()
+    config.read('conf.ini')
+    api_functions = APIFunctions(config)
+
+    transactions = api_functions.get_transactions()
+##    for account in transactions:
+##        if not len(transactions[account]):
+##            with open('data/' + account + '.json', 'w') as file:
+##                json.dump(transactions[account], file)
 
 
-reload = False
+reload = True
+
 if reload:
     fetch_transactions()
 
