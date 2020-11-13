@@ -19,8 +19,10 @@ class APIFunctions():
 
         token = config['TOKEN']
         self.reg_token = token['regToken']
-        self.install_token = token['installToken']
         self.bank_token = token['bankToken']
+
+        id = config['ID']
+        self.install_id = id['installID']
 
         self.api_connector = APIConnector(self.url)
 
@@ -29,8 +31,8 @@ class APIFunctions():
 
     def get_transactions(self):
         api_connector = APIConnector()
-        api_connector.user_registration(self.reg_token)
-        #self.bank_token = api_connector.get_banking_token(self.url, self.install_token, self.client_id, self.client_secret, self.username, self.pin)
+        self.install_id = api_connector.user_registration(self.reg_token)
+        #self.bank_token = api_connector.get_banking_token(self.url, self.install_id, self.client_id, self.client_secret, self.username, self.pin)
         providers_list = api_connector.get_all_provider(self.bank_token)
 
         provider_id = providers_list[0]['id']
@@ -51,7 +53,7 @@ class APIFunctions():
         access_id = response['accessId']
         print('accessId: {}'.format(access_id))
 
-        accounts = api_connector.get_all_accounts(access_id, self.bank_token)
+        accounts = api_connector.list_accounts(access_id, self.bank_token)
         print(accounts)
 
         transactions = dict()
