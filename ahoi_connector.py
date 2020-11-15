@@ -1,86 +1,372 @@
-import configparser
 import requests
 import base64
 import json
 from datetime import datetime
 import uuid
-import time
 
 
 class APIConnector:
 
-    def __init__(self, config):
+    def __init__(self, url):
+        self.url = url
 
-        general = config['GENERAL']
-        self.username = general['username']
-        self.pin = general['pin']
-        self.url = general['url']
-
-        oauth = config['OAUTH']
-        self.client_id = oauth['clientID']
-        self.client_secret = oauth['clientSecret']
-        self.app_secret = oauth['appSecret']
-        self.app_secret_key = oauth['appSecretKey']
-
-        token = config['TOKEN']
-        self.reg_token = token['regToken']
-        self.install_token = token['installToken']
-        self.bank_token = token['bankToken']
-
-        if self.reg_token is None or self.reg_token == "":
-            self.generate_registration_token()
-
-    def generate_registration_token(self):
-        credentials = self.client_id + ":" + self.client_secret
-
-        credentials_base64 = base64.b64encode(credentials.encode()).decode()
-
+    # Access
+    def list_accesses(self):
         headers = {
-            'Authorization': 'Basic ' + credentials_base64
+            'accept': "application/json"
+        }
+
+        res = requests.get(self.url + "/ahoi/api/v2/accesses", headers=headers)
+
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    def create_new_access(self, bank_token, username, pin, provider_id):
+        headers = {
+            'Authorization': 'Bearer ' + bank_token,
+            'Content-Type': 'application/json'
+        }
+        print(provider_id, username, pin)
+        data = "{\"providerId\":\"%s\",\"type\":\"BankAccess\",\"accessFields\":{\"USERNAME\":\"%s\",\"PIN\":\"%s\"}}" %(provider_id, username, pin)
+
+        res = requests.post(self.url + '/ahoi/api/v2/accesses/async', headers=headers, data=data)
+        res_dict = json.loads(res.text)
+        print(res_dict)
+        return res_dict['id'], res_dict['state']
+
+    def get_access(self, bank_token, access_id):
+        headers = {
+            'content-type': "application/json",
+            'authorization': "Bearer " + bank_token
+        }
+
+        res = requests.get(self.url + "/ahoi/api/v2/accesses/" + access_id, headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    def delete_access(self, bank_token, access_id):
+        headers = {'authorization': "Bearer " + bank_token}
+
+        res = requests.delete(self.url + "/ahoi/api/v2/accesses/" + access_id, headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    def update_access(self, bank_token, access_id, username, pin):
+        headers = {
+            'accept': "application/json",
+            'content-type': "application/json",
+            'authorization': "Bearer " + bank_token
         }
 
         data = {
             'grant_type': 'client_credentials',
-            'username': self.username,
-            'password': self.pin
+            'username': username,
+            'password': pin
         }
-        res = requests.post(self.url + '/auth/v1/oauth/token?', headers=headers, data=data)
 
+        res = requests.put(self.url + f"/ahoi/api/v2/accesses/{access_id}/async", data=data, headers=headers)
         res_dict = json.loads(res.text)
-        self.reg_token = res_dict['access_token']
+        return res_dict
 
-    def user_registration(self):
+    # Account
+    def list_accounts(self, bank_token, access_id):
+
         headers = {
-            'authorization': 'Bearer ' + self.reg_token
+            'content-type': "application/json",
+            'authorization': "Bearer " + bank_token
+        }
+
+        res = requests.get(self.url + f"/ahoi/api/v2/accesses/{access_id}/accounts", headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    def get_account(self, bank_token, account_id, access_id):
+        headers = {
+            'content-type': "application/json",
+            'authorization': "Bearer " + bank_token
+        }
+
+        res = requests.get(self.url + f"/ahoi/api/v2/accesses/{access_id}/accounts/{account_id}", headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    def delete_account(self, bank_token, access_id, account_id):
+        headers = {
+            'authorization': "Bearer " + bank_token
+            }
+
+        res = requests.delete(self.url + f"/ahoi/api/v2/accesses/{access_id}/accounts/{account_id}", headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    def refresh_account(self, bank_token, access_id, account_id):
+        headers = {
+            'authorization': "Bearer " + bank_token
+        }
+
+        res = requests.put(self.url + f"/ahoi/api/v2/accesses/{access_id}/accounts/{account_id}/refresh", headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    def update_account_name(self, access_id, account_id, account_name):
+        headers = {
+            'content-type': "application/json",
+            'authorization': "Bearer <BEARER_TOKEN>"
+        }
+
+        res = requests.put(self.url + f"/ahoi/api/v2/accesses/{access_id}/accounts/{account_id}/userdefinedname/{account_name}",
+                     headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    # Authorization methods
+    def list_all_authorization_method(self, bank_token, access_id):
+        headers = {
+            'content-type': "application/json",
+            'authorization': "Bearer " + bank_token
+        }
+
+        res = requests.get(self.url + f"/ahoi/api/v2/accesses/{access_id}/authorizationmethods", headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    def get_default_authorization_method(self, bank_token, access_id):
+        headers = {
+            'content-type': "application/json",
+            'authorization': "Bearer " + bank_token
+        }
+
+        res = requests.get(self.url + f"/ahoi/api/v2/accesses/{access_id}/authorizationmethods/default", headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+###############Testen##########################
+    def set_default_authorization_method(self, bank_token, access_id):
+        data = "{\"methodId\":\"%s\",\"type\":\"\",\"version\":\"\",\"name\":\"\",\"explanation\":\"\"}"
+
+        headers = {
+            'content-type': "application/json",
+            'authorization': "Bearer " + bank_token
+        }
+
+        res = requests.put(self.url + f"/ahoi/api/v2/accesses/{access_id}/authorizationmethods/default", data=data, headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    def refresh_authorization_method(self, bank_token, access_id):
+        headers = {
+            'content-type': "application/json",
+            'authorization': "Bearer " + bank_token
+        }
+
+        res = requests.put(self.url + f"/ahoi/api/v2/accesses/{access_id}/authorizationmethods/refresh", headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    # Forecast
+    def get_balance_forecast(self, bank_token, access_id, account_id):
+        headers = {
+            'content-type': "application/json",
+            'authorization': "Bearer " + bank_token
+        }
+
+        res = requests.get(self.url + f"/ahoi/api/v2/accesses/{access_id}/accounts/%{account_id}/forecast", headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    def get_forecast_transactions(self, bank_token, access_id, account_id):
+        headers = {
+            'content-type': "application/json",
+            'authorization': "Bearer " + bank_token
+        }
+
+        res = requests.get(self.url + f"/ahoi/api/v2/accesses/{access_id}/accounts/{account_id}/forecast/transactions",
+                     headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    # Provider
+    #def list_bank_provider(self, bank_token):
+
+    #    headers = {
+    #        'authorization': 'Bearer ' + bank_token
+    #    }
+
+    #    res = requests.get(self.url + '/ahoi/api/v2/providers', headers=headers)
+    #    res_dict = json.loads(res.text)
+
+    #    print('providers: {}'.format(len(res_dict)))
+    #    return res_dict
+
+    def get_provider(self, bank_token, provider_id):
+
+        headers = {
+            'authorization': 'Bearer ' + bank_token
+        }
+
+        res = requests.get(self.url + '/ahoi/api/v2/providers/' + provider_id, headers=headers)
+        res_dict = json.loads(res.text)
+
+        print('providers: {}'.format(len(res_dict)))
+        return res_dict
+
+    def get_providers(self, bank_token):
+
+        headers = {
+            'authorization': 'Bearer ' + bank_token
+        }
+
+        res = requests.get(self.url + '/ahoi/api/v2/providers/', headers=headers)
+        res_dict = json.loads(res.text)
+
+        print('providers: {}'.format(len(res_dict)))
+        return res_dict
+
+    # Registration
+    def user_registration(self, reg_token):
+        headers = {
+            'authorization': 'Bearer ' + reg_token
         }
 
         res = requests.post(self.url + '/ahoi/api/v2/registration', headers=headers)
         res_dict = json.loads(res.text)
-        self.install_token = res_dict['installation']
-        print('installation token: ' + self.install_token)
+        install_id = res_dict['installation']
+        return install_id
 
-    def get_banking_token(self):
-        # print('get banking token')
+    def delete_user_context_for_token(self, bank_token):
+        headers = {'authorization': "Bearer " + bank_token
 
-        # Expected request
-        # {
-        #     "installationId":"<INSTALLATION_ID>",
-        #     "nonce":"0wYWLarLDBrWU7B2I1Go4A==",
-        #     "timestamp":"2018-11-01T11:32:44.413Z"
-        # }
+        }
 
+        res = requests.delete( self.url + "/ahoi/api/v2/registration", headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    def request_api_jwk_public_key(self, bank_token):
+        headers = {
+            'content-type': "application/json",
+            'authorization': "Bearer " + bank_token
+        }
+
+        res = requests.get(self.url + "/ahoi/api/v2/registration/jwk", headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    def request_api_public_key(self, bank_token):
+        headers = {
+            'content-type': "application/json",
+            'authorization': "Bearer " + bank_token
+        }
+
+        res = requests.get(self.url + "/ahoi/api/v2/registration/keys", headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    def generate_registration_token(self, client_id, client_secret, username, pin):
+                credentials = client_id + ":" + client_secret
+
+                credentials_base64 = base64.b64encode(credentials.encode()).decode()
+
+                headers = {
+                    'authorization': 'Basic ' + credentials_base64
+                }
+
+                data = {
+                    'grant_type': 'client_credentials',
+                    'username': username,
+                    'password': pin
+                }
+                res = requests.post(self.url + '/auth/v1/oauth/token?', headers=headers, data=data)
+
+                res_dict = json.loads(res.text)
+                reg_token = res_dict['access_token']
+                return reg_token
+
+    # Security
+    def list_securities_for_account(self, bank_token, access_id, account_id):
+        headers = {
+            'content-type': "application/json",
+            'authorization': "Bearer " + bank_token
+        }
+
+        res = requests.get(self.url + f"/ahoi/api/v2/accesses/{access_id}/accounts/{account_id}/securities", headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    def get_security(self, bank_token, access_id, account_id, security_id):
+        headers = {
+            'content-type': "application/json",
+            'authorization': "Bearer " + bank_token
+        }
+
+        res = requests.get(self.url + f"/ahoi/api/v2/accesses/{access_id}/accounts/{account_id}/securities/{security_id}",
+                     headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    # Task
+    def fetch_state_of_task(self, bank_token, task_id):
+        headers = {
+            'Authorization': 'Bearer ' + bank_token,
+        }
+        res = requests.get(self.url + '/ahoi/api/v2/tasks/' + task_id, headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    def fetch_task_chellenge(self, bank_token, task_id):
+        headers = {
+            'content-type': "application/json",
+            'authorization': "Bearer " + bank_token
+        }
+
+        res = requests.get(self.url + f"/ahoi/api/v2/tasks/{task_id}/authorizations/challenges" + bank_token, headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    def authorize_task(self, bank_token, task_id):
+        data = "{\"response\":\"%s\"}" %(task_id)
+
+        headers = {
+            'accept': "application/json",
+            'content-type': "application/json",
+            'authorization': "Bearer " + bank_token
+        }
+
+        res = requests.put(self.url + f"/ahoi/api/v2/tasks/{task_id}/authorizations/challenges", data=data, headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    def fetch_authorization_methods(self, bank_token, task_id):
+        headers = {
+            'content-type': "application/json",
+            'authorization': "Bearer " + bank_token
+        }
+
+        res = requests.get(self.url + f"/ahoi/api/v2/tasks/{task_id}/authorizations/methods", headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
+    def select_authorization_method(self, bank_token, task_id, method_id, type, version, name, ):
+        data = "{\"methodId\":\"\",\"type\":\"\",\"version\":\"\",\"name\":\"\",\"explanation\":\"\"}"
+
+        headers = {
+            'accept': "application/json",
+            'content-type': "application/json",
+            'authorization': "Bearer <BEARER_TOKEN>"
+        }
+
+        res = requests.put(self.url + f"/ahoi/api/v2/tasks/{task_id}/authorizations/methods", data=data, headers=headers)
+
+    def get_banking_token(self, install_id, client_id, client_secret, username, pin):
         nonce = uuid.uuid4().hex
-        # print(nonce)
+
         current_time = datetime.now().utcnow()
         current_time_string = current_time.strftime('%Y-%m-%dT%H:%M:%S.%fZ')[:-4]+'Z'
-        # print(current_time_string)
 
-        ###### Hier muss ein Fehler sein ######
         x_auth_ahoi_json = "{\"installationId\":\"%s\",\"nonce\":\"%s\",\"timestamp\":\"%s\"}" % (
-        self.install_token, nonce, current_time_string)
-        # print(x_auth_ahoi_json)
+        install_id, nonce, current_time_string)
 
-        credentials = self.client_id + ":" + self.client_secret
+        credentials = client_id + ":" + client_secret
 
         credentials_base64 = base64.b64encode(credentials.encode()).decode()
         x_auth_base64 = base64.urlsafe_b64encode(str(x_auth_ahoi_json).encode()).decode()
@@ -92,71 +378,35 @@ class APIConnector:
 
         data = {
             'grant_type': 'client_credentials',
-            'username': self.username,
-            'password': self.pin
+            'username': username,
+            'password': pin
         }
 
         res = requests.post(self.url + '/auth/v1/oauth/token', headers=headers, data=data)
         res_dict = json.loads(res.text)
-        # print(res_dict)
-        self.bank_token = res_dict['access_token']
-        print('banking token: ' + self.bank_token)
 
-    def get_all_provider(self):
-        # print('all providers')
+        bank_token = res_dict['access_token']
+        return bank_token
+
+    def get_provider_access_data(self, bank_token, provider_id):
         headers = {
-            'authorization': 'Bearer ' + self.bank_token
-        }
-
-        # print(headers)
-
-        res = requests.get(self.url + '/ahoi/api/v2/providers', headers=headers)
-        res_dict = json.loads(res.text)
-        print('providers: {}'.format(len(res_dict)))
-        return res_dict
-
-    def get_provider_access_data(self, provider_id):
-        headers = {
-            'authorization': "Bearer " + self.bank_token
+            'authorization': "Bearer " + bank_token
         }
 
         res = requests.get(self.url + '/ahoi/api/v2/providers/' + provider_id, headers=headers)
         res_dict = json.loads(res.text)
         return res_dict['accessDescription']
 
-    def create_new_access(self, provider_id):
+
+
+
+
+
+
+# TRANSACTIONS
+    def get_all_transactions(self, access_id, account_id, bank_token):
         headers = {
-            'Authorization': 'Bearer ' + self.bank_token,
-            'Content-Type': 'application/json'
-        }
-
-        data = "{\"providerId\":\"%s\",\"type\":\"BankAccess\",\"accessFields\":{\"USERNAME\":\"%s\",\"PIN\":\"%s\"}}" %(provider_id, self.username, self.pin)
-
-        res = requests.post(self.url + '/ahoi/api/v2/accesses/async', headers=headers, data=data)
-        res_dict = json.loads(res.text)
-        return res_dict['id'], res_dict['state']
-
-    def get_access_state(self, task_id):
-        headers = {
-            'Authorization': 'Bearer ' + self.bank_token,
-        }
-        res = requests.get(self.url + '/ahoi/api/v2/tasks/' + task_id, headers=headers)
-        res_dict = json.loads(res.text)
-        return res_dict
-
-    def get_all_accounts(self, access_id):
-        headers = {
-            'Authorization': 'Bearer ' + self.bank_token,
-        }
-
-        res = requests.get(self.url + '/ahoi/api/v2/accesses/' + access_id + '/accounts', headers=headers)
-
-        res_dict = json.loads(res.text)
-        return res_dict
-
-    def get_all_transactions(self, access_id, account_id):
-        headers = {
-            'authorization': 'Bearer ' + self.bank_token
+            'authorization': 'Bearer ' + bank_token
         }
 
         res = requests.get(self.url + '/ahoi/api/v2/accesses/' + access_id + '/accounts/' + account_id + '/transactions', headers=headers)
@@ -165,40 +415,3 @@ class APIConnector:
         return res_dict
 
 
-def get_transactions():
-    config = configparser.ConfigParser()
-    config.read('conf.ini')
-
-    api_connector = APIConnector(config)
-    api_connector.user_registration()
-    api_connector.get_banking_token()
-    providers_list = api_connector.get_all_provider()
-
-    provider_id = providers_list[0]['id']
-
-    access_description_dict = api_connector.get_provider_access_data(provider_id=provider_id)
-    # print(access_description_dict)
-
-    in_progress = True
-    while in_progress:
-        task_id, state = api_connector.create_new_access(provider_id=provider_id)
-        in_progress = (state == 'IN_PROGRESS')
-    print('taskId: {}, state: {}'.format(task_id, state))
-
-    in_progress = True
-    while in_progress:
-        response = api_connector.get_access_state(task_id=task_id)
-        in_progress = (response['state'] == 'IN_PROGRESS')
-        time.sleep(2)
-    access_id = response['accessId']
-    print('accessId: {}'.format(access_id))
-
-    accounts = api_connector.get_all_accounts(access_id=access_id)
-    print(accounts)
-
-    transactions = dict()
-    for account in accounts:
-        account_id = account['id']
-        transactions[account_id] = api_connector.get_all_transactions(access_id=access_id, account_id=account_id)
-
-    return transactions
