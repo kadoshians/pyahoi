@@ -38,7 +38,6 @@ class APIFunctions():
 
         provider_id = providers_list[0]['id']
         print(provider_id)
-        access_description_dict = api_connector.get_provider_access_data(self.bank_token, provider_id)
 
         in_progress = True
         while in_progress:
@@ -60,6 +59,6 @@ class APIFunctions():
         transactions = dict()
         for account in accounts:
             account_id = account['id']
-            transactions[account_id] = api_connector.get_all_transactions(self.bank_token, access_id, account_id)
+            transactions[account_id] = api_connector.get_transactions(self.bank_token, access_id, account_id)
 
         return transactions
