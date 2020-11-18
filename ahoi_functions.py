@@ -1,4 +1,7 @@
 import time
+import threading
+import time
+from multiprocessing import Process
 
 from ahoi_connector import APIConnector
 
@@ -17,48 +20,80 @@ class APIFunctions():
         self.app_secret = oauth['appSecret']
         self.app_secret_key = oauth['appSecretKey']
 
-        token = config['TOKEN']
-        self.reg_token = token['regToken']
-        self.bank_token = token['bankToken']
-
-        id = config['ID']
-        self.install_id = id['installID']
-        self.provider_id = id['providerID']
-
         self.api_connector = APIConnector(self.url)
 
-        if self.reg_token is None or self.reg_token == "":
-            self.reg_token = self.api_connector.generate_registration_token(self.client_id, self.client_secret, self.username, self.pin)
+        # get the reg_token for the first time
+        res_dict = self.api_connector.generate_registration_token(self.client_id, self.client_secret,
+                                                                  self.username, self.pin)
+        self.reg_token = res_dict['access_token']
+        reg_interval = int(res_dict['expires_in'])
+
+        # start a daemon to check the validity of the reg_token
+        thread = threading.Thread(target=self.__gen_reg_token, args=([reg_interval]))
+        thread.daemon = True
+        thread.start()
+
+        # get the installation_id for the application
+        self.install_id = self.api_connector.user_registration(self.reg_token)
+
+        # get the bank_token for the first time
+        res_dict = self.api_connector.get_banking_token(self.install_id, self.client_id, self.client_secret,
+                                                        self.username, self.pin)
+        self.bank_token = res_dict['access_token']
+        bank_interval = int(res_dict['expires_in'])
+
+        # start a daemon to check the validity of the bank_token
+        thread2 = threading.Thread(target=self.__gen_bank_token, args=([bank_interval]))
+        thread2.daemon = True
+        thread2.start()
+
+
+    def __gen_reg_token(self, interval):
+        while True:
+            time.sleep(interval)
+            res_dict = self.api_connector.generate_registration_token(self.client_id, self.client_secret,
+                                                                            self.username, self.pin)
+            self.reg_token = res_dict['access_token']
+            interval = int(res_dict['expires_in'])
+            print("New reg_token generated")
+
+
+
+    def __gen_bank_token(self, interval):
+        while True:
+            time.sleep(interval)
+            res_dict = self.api_connector.get_banking_token(self.install_id, self.client_id, self.client_secret,
+                                                              self.username, self.pin)
+            self.bank_token = res_dict['access_token']
+            interval = int(res_dict['expires_in'])
+            print("New bank_token generated")
+
 
     def get_transactions(self):
-        api_connector = APIConnector(self.url)
-        self.install_id = api_connector.user_registration(self.reg_token)
-        self.bank_token = api_connector.get_banking_token(self.install_id, self.client_id, self.client_secret, self.username, self.pin)
-        providers_list = api_connector.get_providers(self.bank_token)
-
+        providers_list = self.api_connector.get_providers(self.bank_token)
         provider_id = providers_list[0]['id']
         print(provider_id)
 
         in_progress = True
         while in_progress:
-            task_id, state = api_connector.create_new_access(self.bank_token, self.username, self.pin, provider_id)
+            task_id, state = self.api_connector.create_new_access(self.bank_token, self.username, self.pin, provider_id)
             in_progress = (state == 'IN_PROGRESS')
         print('taskId: {}, state: {}'.format(task_id, state))
 
         in_progress = True
         while in_progress:
-            response = api_connector.fetch_state_of_task(self.bank_token, task_id)
+            response = self.api_connector.fetch_state_of_task(self.bank_token, task_id)
             in_progress = (response['state'] == 'IN_PROGRESS')
             time.sleep(2)
         access_id = response['accessId']
         print('accessId: {}'.format(access_id))
 
-        accounts = api_connector.list_accounts(self.bank_token, access_id)
+        accounts = self.api_connector.list_accounts(self.bank_token, access_id)
         print(accounts)
 
         transactions = dict()
         for account in accounts:
             account_id = account['id']
-            transactions[account_id] = api_connector.get_transactions(self.bank_token, access_id, account_id)
+            transactions[account_id] = self.api_connector.get_transactions(self.bank_token, access_id, account_id)
 
         return transactions
