@@ -237,8 +237,8 @@ class APIConnector:
         res = requests.post(self.url + '/auth/v1/oauth/token', headers=headers, data=data)
         res_dict = json.loads(res.text)
 
-        bank_token = res_dict['access_token']
-        return bank_token
+        #bank_token = res_dict['access_token']
+        return res_dict
 
     def user_registration(self, reg_token):
         headers = {
@@ -296,8 +296,8 @@ class APIConnector:
         res = requests.post(self.url + '/auth/v1/oauth/token?', headers=headers, data=data)
 
         res_dict = json.loads(res.text)
-        reg_token = res_dict['access_token']
-        return reg_token
+        #reg_token = res_dict['access_token']
+        return res_dict
 
     # Security
     def list_securities_for_account(self, bank_token, access_id, account_id):

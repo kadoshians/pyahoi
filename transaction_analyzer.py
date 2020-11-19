@@ -11,10 +11,11 @@ def fetch_transactions():
     api_functions = APIFunctions(config)
 
     transactions = api_functions.get_transactions()
-##    for account in transactions:
-##        if not len(transactions[account]):
-##            with open('data/' + account + '.json', 'w') as file:
-##                json.dump(transactions[account], file)
+
+    for account in transactions:
+        if not len(transactions[account]):
+            with open('data/' + account + '.json', 'w') as file:
+                json.dump(transactions[account], file)
 
 
 reload = True
