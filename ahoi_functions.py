@@ -57,8 +57,6 @@ class APIFunctions():
             interval = int(res_dict['expires_in'])
             print("New reg_token generated")
 
-
-
     def __gen_bank_token(self, interval):
         while True:
             time.sleep(interval)
@@ -68,17 +66,16 @@ class APIFunctions():
             interval = int(res_dict['expires_in'])
             print("New bank_token generated")
 
-
     def get_transactions(self):
         providers_list = self.api_connector.get_providers(self.bank_token)
         provider_id = providers_list[0]['id']
-        print(provider_id)
+        print(f"providerId: {provider_id}")
 
         in_progress = True
         while in_progress:
             task_id, state = self.api_connector.create_new_access(self.bank_token, self.username, self.pin, provider_id)
             in_progress = (state == 'IN_PROGRESS')
-        print('taskId: {}, state: {}'.format(task_id, state))
+        print(f"taskId: {task_id}, state: {state}")
 
         in_progress = True
         while in_progress:
@@ -86,14 +83,17 @@ class APIFunctions():
             in_progress = (response['state'] == 'IN_PROGRESS')
             time.sleep(2)
         access_id = response['accessId']
-        print('accessId: {}'.format(access_id))
+        print(f"accessId: {access_id}")
 
         accounts = self.api_connector.list_accounts(self.bank_token, access_id)
         print(accounts)
-
+        i = 0
         transactions = dict()
         for account in accounts:
             account_id = account['id']
+            print(f"account{i} {account_id}")
             transactions[account_id] = self.api_connector.get_transactions(self.bank_token, access_id, account_id)
+            i +=1
+            print(transactions)
 
         return transactions

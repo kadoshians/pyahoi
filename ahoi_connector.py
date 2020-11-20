@@ -26,12 +26,10 @@ class APIConnector:
             'Authorization': 'Bearer ' + bank_token,
             'Content-Type': 'application/json'
         }
-        print(provider_id, username, pin)
         data = "{\"providerId\":\"%s\",\"type\":\"BankAccess\",\"accessFields\":{\"USERNAME\":\"%s\",\"PIN\":\"%s\"}}" %(provider_id, username, pin)
 
         res = requests.post(self.url + '/ahoi/api/v2/accesses/async', headers=headers, data=data)
         res_dict = json.loads(res.text)
-        print(res_dict)
         return res_dict['id'], res_dict['state']
 
     def get_access(self, bank_token, access_id):
@@ -192,20 +190,15 @@ class APIConnector:
 
         res = requests.get(self.url + '/ahoi/api/v2/providers/' + provider_id, headers=headers)
         res_dict = json.loads(res.text)
-
-        print('providers: {}'.format(len(res_dict)))
         return res_dict
 
     def get_providers(self, bank_token):
-
         headers = {
             'authorization': 'Bearer ' + bank_token
         }
 
         res = requests.get(self.url + '/ahoi/api/v2/providers/', headers=headers)
         res_dict = json.loads(res.text)
-
-        print('providers: {}'.format(len(res_dict)))
         return res_dict
 
     # Registration
@@ -236,8 +229,6 @@ class APIConnector:
 
         res = requests.post(self.url + '/auth/v1/oauth/token', headers=headers, data=data)
         res_dict = json.loads(res.text)
-
-        #bank_token = res_dict['access_token']
         return res_dict
 
     def user_registration(self, reg_token):
@@ -293,10 +284,9 @@ class APIConnector:
             'username': username,
             'password': pin
         }
-        res = requests.post(self.url + '/auth/v1/oauth/token?', headers=headers, data=data)
 
+        res = requests.post(self.url + '/auth/v1/oauth/token?', headers=headers, data=data)
         res_dict = json.loads(res.text)
-        #reg_token = res_dict['access_token']
         return res_dict
 
     # Security
@@ -430,14 +420,16 @@ class APIConnector:
         res_dict = json.loads(res.text)
         return res_dict
 
-    def get_transactions(self, access_id, account_id, bank_token):
+    def get_transactions(self, bank_token, access_id, account_id):
+        print("token" + str(bank_token))
         headers = {
             'authorization': 'Bearer ' + bank_token
         }
 
         res = requests.get(self.url + '/ahoi/api/v2/accesses/' + access_id + '/accounts/' + account_id + '/transactions', headers=headers)
-
+        print(res)
         res_dict = json.loads(res.text)
+        print("res von methode" + str(res_dict))
         return res_dict
 
     # Transaction pattern
@@ -532,7 +524,7 @@ class APIConnector:
         headers = {
             'accept': "application/json",
             'content-type': "application/json",
-            'authorization': "Bearer <BEARER_TOKEN>"
+            'authorization': "Bearer " + bank_token
         }
 
         data = "{\"transfers\":%s,\"singleBookingRequested\":%s}" %(transfers, is_single_booking)
