@@ -14,6 +14,7 @@ def fetch_transactions():
 
     for account in transactions:
         if not len(transactions[account]):
+            print("account" + account)
             with open('data/' + account + '.json', 'w') as file:
                 json.dump(transactions[account], file)
 
