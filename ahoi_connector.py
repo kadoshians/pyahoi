@@ -421,15 +421,12 @@ class APIConnector:
         return res_dict
 
     def get_transactions(self, bank_token, access_id, account_id):
-        print("token" + str(bank_token))
         headers = {
             'authorization': 'Bearer ' + bank_token
         }
 
         res = requests.get(self.url + '/ahoi/api/v2/accesses/' + access_id + '/accounts/' + account_id + '/transactions', headers=headers)
-        print(res)
         res_dict = json.loads(res.text)
-        print("res von methode" + str(res_dict))
         return res_dict
 
     # Transaction pattern

@@ -12,11 +12,10 @@ def fetch_transactions():
 
     transactions = api_functions.get_transactions()
 
-    for account in transactions:
-        if not len(transactions[account]):
-            print("account" + account)
-            with open('data/' + account + '.json', 'w') as file:
-                json.dump(transactions[account], file)
+    for iban in transactions:
+        if len(transactions[iban]):
+            with open(f"data/{iban}.json", 'w') as json_out:
+                json.dump(transactions[iban], json_out, indent=4)
 
 
 reload = True

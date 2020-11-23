@@ -87,13 +87,13 @@ class APIFunctions():
 
         accounts = self.api_connector.list_accounts(self.bank_token, access_id)
         print(accounts)
-        i = 0
+
         transactions = dict()
         for account in accounts:
             account_id = account['id']
-            print(f"account{i} {account_id}")
-            transactions[account_id] = self.api_connector.get_transactions(self.bank_token, access_id, account_id)
-            i +=1
-            print(transactions)
+            iban = account['iban']
+
+            # use iban for identification because account_id is not static
+            transactions[iban] = self.api_connector.get_transactions(self.bank_token, access_id, account_id)
 
         return transactions
