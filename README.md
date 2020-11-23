@@ -48,3 +48,17 @@ Diese greift das Konzept des *Local Hero* auf, bei dem der Kunde durch regionale
 Gewährleistet wird dies, durch die Kombination aus *Geoinformationen* und den Ortsangaben einzelner Transaktionen, welche wir über die *AHOI API* abrufen.
 
 ![Graph3](images/germany.png "Germany")
+
+### Dashboard
+Als zusätzliches Feature bietet Kâdo Cards seinen Händlern ein Dashboard an, auf dem allen wichtigen Informationen einsehbar sind.
+Auf einen Blick lassen sich so die Auswirkungen der unterschiedlichen Stempelaktionen grafisch darstellen und der Erfolg mit Kâdo Cards messen.
+Die nachfolgenden Grapen stellen dabei mögliche Anwendungsbeispiele dar. 
+
+##### Anzahl der Einkäufe pro Tag
+![Graph4](images/anzahl_einkäufe.png "Anzahl Einkäufe")
+
+##### Umsatz pro Tag
+![Graph5](images/umsatz_tag.png "Umsatz pro Tag")
+
+##### Durchschnittliche Einkaufssumme pro Tag 
+![Graph4](images/durchschnitt_einkauf.png "Durchschnittliche Einkäufe")
