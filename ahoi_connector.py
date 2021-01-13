@@ -5,6 +5,9 @@ from datetime import datetime
 import uuid
 
 
+
+
+
 class APIConnector:
 
     def __init__(self, url):
@@ -241,6 +244,17 @@ class APIConnector:
         install_id = res_dict['installation']
         return install_id
 
+    def user_registration_x_auth(self, reg_token, base64_encoded_session_header):
+        headers = {
+            'authorization': 'Bearer ' + reg_token,
+            'X-Ahoi_Session_security': base64_encoded_session_header
+        }
+
+        res = requests.post(self.url + '/ahoi/api/v2/registration', headers=headers)
+        res_dict = json.loads(res.text)
+        install_id = res_dict['installation']
+        return install_id
+
     def delete_user_context_for_token(self, bank_token):
         headers = {'authorization': "Bearer " + bank_token
 
@@ -321,7 +335,7 @@ class APIConnector:
         res_dict = json.loads(res.text)
         return res_dict
 
-    def fetch_task_chellenge(self, bank_token, task_id):
+    def fetch_task_challenge(self, bank_token, task_id):
         headers = {
             'content-type': "application/json",
             'authorization': "Bearer " + bank_token
@@ -378,7 +392,7 @@ class APIConnector:
         res_dict = json.loads(res.text)
         return res_dict
 
-    def provider_login_imformation(self, bank_token, task_id, username, pin):
+    def provider_login_information(self, bank_token, task_id, username, pin):
         headers = {
             'accept': "application/json",
             'content-type': "application/json",
@@ -396,7 +410,6 @@ class APIConnector:
         return res_dict
 
     # Transaction
-
     def list_transactions_for_pattern(self, bank_token, access_id, account_id, pattern_id, transaction_limit, offset, start, end):
         headers = {
             'accept': "application/json",

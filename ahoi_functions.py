@@ -1,9 +1,15 @@
 import time
 import threading
 import time
-from multiprocessing import Process
-
 from ahoi_connector import APIConnector
+from Crypto.Random import get_random_bytes
+from Crypto.Cipher import AES, PKCS1_OAEP
+from Crypto.PublicKey import  RSA
+from Crypto.Hash import SHA256, SHA1
+from Crypto.Signature import pss
+from Crypto import Random
+from Crypto.Util.Padding import unpad
+import base64
 
 
 class APIFunctions():
@@ -97,3 +103,40 @@ class APIFunctions():
             transactions[iban] = self.api_connector.get_transactions(self.bank_token, access_id, account_id)
 
         return transactions
+
+    def test_x_auth(self):
+        # Generate a simple symmetricKey (AES)
+        symmetric_key = get_random_bytes(32)
+
+
+        # Get public_key
+        response = self.api_connector.request_api_public_key(self.bank_token)
+        api_public_key = response['publicKey']['value']
+        public_key_id = response['keyId']
+
+        # Decode and parse public_key
+        data = base64.urlsafe_b64decode(api_public_key)
+
+        cipher = RSA.import_key(data)
+        public_rsa_key = PKCS1_OAEP.new(cipher)
+
+        # Encrypt symmetric_key with the received public_key
+        enc_symmetric_key = public_rsa_key.encrypt(symmetric_key)
+
+        # Encode Base64 url-safe
+        session_key = base64.urlsafe_b64encode(enc_symmetric_key)
+
+        # Encode JSON to create header value
+        header_template = "{\"publicKeyId\":\"%s\",\"sessionKey\":\"%s\",\"keySpecification\":\"AES\"}" % (public_key_id,
+                                                                                                          session_key)
+        base64_encoded_json_header = base64.urlsafe_b64encode(header_template.encode())
+
+        enc_installation_id = self.api_connector.user_registration_x_auth(self.reg_token, base64_encoded_json_header)
+
+        print(enc_installation_id)
+        enc_installation_id = base64.urlsafe_b64decode(enc_installation_id + '==')
+
+        #iv = enc_installation_id[:AES.block_size]
+        cipher_aes = AES.new(symmetric_key, AES.MODE_EAX)
+        i_installation_id = cipher_aes.decrypt(enc_installation_id)
+        print(i_installation_id)

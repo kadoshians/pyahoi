@@ -4,6 +4,11 @@ from ahoi_functions import APIFunctions
 import configparser
 
 
+reload = False
+
+test = True
+
+
 def fetch_transactions():
     config = configparser.ConfigParser()
     config.read('conf.ini')
@@ -16,10 +21,22 @@ def fetch_transactions():
             with open(f"data/{iban}.json", 'w') as json_out:
                 json.dump(transactions[iban], json_out, indent=4)
 
-reload = True
+
+
+def test_x_auth():
+    config = configparser.ConfigParser()
+    config.read('conf.ini')
+    api_functions = APIFunctions(config)
+
+    api_functions.test_x_auth()
+
+
 
 if reload:
     fetch_transactions()
+
+if test:
+    test_x_auth()
 
 
 #df_transactions = pd.read_json('data/e38a4f14-b4bc-40ba-9fcb-2504f50d9013.json')
