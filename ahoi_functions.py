@@ -10,6 +10,7 @@ from Crypto.Signature import pss
 from Crypto import Random
 from Crypto.Util.Padding import unpad
 import base64
+import binascii
 
 
 class APIFunctions():
@@ -25,6 +26,7 @@ class APIFunctions():
         self.client_secret = oauth['clientSecret']
         self.app_secret = oauth['appSecret']
         self.app_secret_key = oauth['appSecretKey']
+        self.symmetric_key = self.__gen_symmetric_key()
 
         self.api_connector = APIConnector(self.url)
 
@@ -53,7 +55,6 @@ class APIFunctions():
         thread2.daemon = True
         thread2.start()
 
-
     def __gen_reg_token(self, interval):
         while True:
             time.sleep(interval)
@@ -71,6 +72,12 @@ class APIFunctions():
             self.bank_token = res_dict['access_token']
             interval = int(res_dict['expires_in'])
             print("New bank_token generated")
+
+    def __gen_symmetric_key(self):
+        # Generate a simple symmetricKey (AES)
+        symmetric_key = get_random_bytes(32)
+        return symmetric_key
+
 
     def get_transactions(self):
         providers_list = self.api_connector.get_providers(self.bank_token)
@@ -105,9 +112,6 @@ class APIFunctions():
         return transactions
 
     def test_x_auth(self):
-        # Generate a simple symmetricKey (AES)
-        symmetric_key = get_random_bytes(32)
-
 
         # Get public_key
         response = self.api_connector.request_api_public_key(self.bank_token)
@@ -121,7 +125,7 @@ class APIFunctions():
         public_rsa_key = PKCS1_OAEP.new(cipher)
 
         # Encrypt symmetric_key with the received public_key
-        enc_symmetric_key = public_rsa_key.encrypt(symmetric_key)
+        enc_symmetric_key = public_rsa_key.encrypt(self.symmetric_key)
 
         # Encode Base64 url-safe
         session_key = base64.urlsafe_b64encode(enc_symmetric_key)
@@ -130,13 +134,18 @@ class APIFunctions():
         header_template = "{\"publicKeyId\":\"%s\",\"sessionKey\":\"%s\",\"keySpecification\":\"AES\"}" % (public_key_id,
                                                                                                           session_key)
         base64_encoded_json_header = base64.urlsafe_b64encode(header_template.encode())
+        print(base64_encoded_json_header)
+
 
         enc_installation_id = self.api_connector.user_registration_x_auth(self.reg_token, base64_encoded_json_header)
 
-        print(enc_installation_id)
         enc_installation_id = base64.urlsafe_b64decode(enc_installation_id + '==')
 
-        #iv = enc_installation_id[:AES.block_size]
-        cipher_aes = AES.new(symmetric_key, AES.MODE_EAX)
-        i_installation_id = cipher_aes.decrypt(enc_installation_id)
-        print(i_installation_id)
+        iv = enc_installation_id[:AES.block_size]
+
+        cipher_aes = AES.new(self.symmetric_key, AES.MODE_CBC, iv=iv)
+        i_installation_id = cipher_aes.decrypt(enc_installation_id[:-4])
+
+        res_dict = self.api_connector.get_banking_token_x_auth(i_installation_id, self.client_id, self.client_secret,
+                                                              self.username, self.pin, self.app_secret, self.app_secret_key, self.symmetric_key)
+

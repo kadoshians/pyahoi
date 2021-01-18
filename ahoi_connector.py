@@ -3,9 +3,9 @@ import base64
 import json
 from datetime import datetime
 import uuid
-
-
-
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad
+from Crypto.Random import get_random_bytes
 
 
 class APIConnector:
@@ -234,6 +234,52 @@ class APIConnector:
         res_dict = json.loads(res.text)
         return res_dict
 
+    def get_banking_token_x_auth(self, install_id, client_id, client_secret, username, pin, app_secret, app_secret_key, symmetric_key):
+        nonce = uuid.uuid4().hex
+
+        current_time = datetime.now().utcnow()
+        current_time_string = current_time.strftime('%Y-%m-%dT%H:%M:%S.%fZ')[:-4]+'Z'
+
+        x_auth_ahoi_json = "{\"installationId\":\"%s\",\"nonce\":\"%s\",\"timestamp\":\"%s\"}" % (
+        install_id, nonce, current_time_string)
+
+        credentials = client_id + ":" + client_secret
+
+        key = base64.urlsafe_b64encode(str(app_secret_key).encode())
+        iv = base64.urlsafe_b64encode(str(app_secret[:10]).encode())
+
+        cipher = AES.new(key, AES.MODE_CBC, iv=iv)
+
+        encrypted_json = cipher.encrypt(pad(x_auth_ahoi_json.encode(), AES.block_size))
+
+        x_auth_base64 = base64.urlsafe_b64encode(str(encrypted_json).encode()).decode()
+        credentials_base64 = base64.b64encode(credentials.encode()).decode()
+
+        iv = 16 * b'\00'
+        cipher = AES.new(symmetric_key, AES.MODE_CBC, iv=iv)
+        enc_username = cipher.encrypt(pad(username.encode(), AES.block_size))
+        enc_pin = cipher.encrypt(pad(pin.encode(), AES.block_size))
+
+        enc_username_base64 = base64.urlsafe_b64encode(enc_username).decode()
+        enc_pin_base64 = base64.urlsafe_b64encode(enc_pin).decode()
+
+        headers = {
+            'Authorization': 'basic ' + credentials_base64,
+            'X-Authorization-Ahoi': x_auth_base64
+        }
+
+        data = {
+            'grant_type': 'client_credentials',
+            'username': enc_username_base64,
+            'password': enc_pin_base64
+        }
+
+        res = requests.post(self.url + '/auth/v2/oauth/token', headers=headers, data=data)
+        #res_dict = json.loads(res.text)
+        print(res)
+        #return res_dict
+
+
     def user_registration(self, reg_token):
         headers = {
             'authorization': 'Bearer ' + reg_token
@@ -252,6 +298,7 @@ class APIConnector:
 
         res = requests.post(self.url + '/ahoi/api/v2/registration', headers=headers)
         res_dict = json.loads(res.text)
+        print(res)
         install_id = res_dict['installation']
         return install_id
 
