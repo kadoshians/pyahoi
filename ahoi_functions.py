@@ -26,13 +26,12 @@ class APIFunctions():
         self.client_secret = oauth['clientSecret']
         self.app_secret = oauth['appSecret']
         self.app_secret_key = oauth['appSecretKey']
-        self.symmetric_key = self.__gen_symmetric_key()
+        self.session_key = self.__gen_symmetric_key()
 
         self.api_connector = APIConnector(self.url)
 
         # get the reg_token for the first time
-        res_dict = self.api_connector.generate_registration_token(self.client_id, self.client_secret,
-                                                                  self.username, self.pin)
+        res_dict = self.api_connector.generate_registration_token(self.client_id, self.client_secret)
         self.reg_token = res_dict['access_token']
         reg_interval = int(res_dict['expires_in'])
 
@@ -42,11 +41,10 @@ class APIFunctions():
         thread.start()
 
         # get the installation_id for the application
-        self.install_id = self.api_connector.user_registration(self.reg_token)
+        self.installation_id = self.api_connector.user_registration(self.reg_token)
 
         # get the bank_token for the first time
-        res_dict = self.api_connector.get_banking_token(self.install_id, self.client_id, self.client_secret,
-                                                        self.username, self.pin)
+        res_dict = self.api_connector.get_banking_token(self.installation_id, self.client_id, self.client_secret)
         self.bank_token = res_dict['access_token']
         bank_interval = int(res_dict['expires_in'])
 
@@ -58,8 +56,7 @@ class APIFunctions():
     def __gen_reg_token(self, interval):
         while True:
             time.sleep(interval)
-            res_dict = self.api_connector.generate_registration_token(self.client_id, self.client_secret,
-                                                                            self.username, self.pin)
+            res_dict = self.api_connector.generate_registration_token(self.client_id, self.client_secret)
             self.reg_token = res_dict['access_token']
             interval = int(res_dict['expires_in'])
             print("New reg_token generated")
@@ -67,8 +64,7 @@ class APIFunctions():
     def __gen_bank_token(self, interval):
         while True:
             time.sleep(interval)
-            res_dict = self.api_connector.get_banking_token(self.install_id, self.client_id, self.client_secret,
-                                                              self.username, self.pin)
+            res_dict = self.api_connector.get_banking_token(self.installation_id, self.client_id, self.client_secret)
             self.bank_token = res_dict['access_token']
             interval = int(res_dict['expires_in'])
             print("New bank_token generated")
@@ -114,18 +110,20 @@ class APIFunctions():
     def test_x_auth(self):
 
         # Get public_key
-        response = self.api_connector.request_api_public_key(self.bank_token)
+        response = self.api_connector.request_api_public_key(self.reg_token)
+
         api_public_key = response['publicKey']['value']
         public_key_id = response['keyId']
 
         # Decode and parse public_key
-        data = base64.urlsafe_b64decode(api_public_key)
+        public_key = base64.urlsafe_b64decode(api_public_key)
 
-        cipher = RSA.import_key(data)
-        public_rsa_key = PKCS1_OAEP.new(cipher)
+        recipient_key = RSA.import_key(public_key)
+        cipher_rsa = PKCS1_OAEP.new(recipient_key)
 
         # Encrypt symmetric_key with the received public_key
-        enc_symmetric_key = public_rsa_key.encrypt(self.symmetric_key)
+        enc_symmetric_key = cipher_rsa.encrypt(self.session_key)
+
 
         # Encode Base64 url-safe
         session_key = base64.urlsafe_b64encode(enc_symmetric_key)
@@ -134,18 +132,24 @@ class APIFunctions():
         header_template = "{\"publicKeyId\":\"%s\",\"sessionKey\":\"%s\",\"keySpecification\":\"AES\"}" % (public_key_id,
                                                                                                           session_key)
         base64_encoded_json_header = base64.urlsafe_b64encode(header_template.encode())
-        print(base64_encoded_json_header)
-
 
         enc_installation_id = self.api_connector.user_registration_x_auth(self.reg_token, base64_encoded_json_header)
 
-        enc_installation_id = base64.urlsafe_b64decode(enc_installation_id + '==')
+        #enc_installation_id = base64.urlsafe_b64decode(enc_installation_id + "==")
 
-        iv = enc_installation_id[:AES.block_size]
+        #iv = 16 * b'\00'
+        #cipher_aes = AES.new(self.session_key, AES.MODE_CBC, iv=iv)
+        #i_installation_id = cipher_aes.decrypt(enc_installation_id[:-4])
 
-        cipher_aes = AES.new(self.symmetric_key, AES.MODE_CBC, iv=iv)
-        i_installation_id = cipher_aes.decrypt(enc_installation_id[:-4])
+        res_dict = self.api_connector.get_banking_token_x_auth(enc_installation_id, self.client_id, self.client_secret,
+                                                              self.app_secret, self.app_secret_key, base64_encoded_json_header)
+        print(res_dict)
+        sec_bank_token = res_dict['access_token']
 
-        res_dict = self.api_connector.get_banking_token_x_auth(i_installation_id, self.client_id, self.client_secret,
-                                                              self.username, self.pin, self.app_secret, self.app_secret_key, self.symmetric_key)
+        providers_list = self.api_connector.get_providers(self.bank_token)
+        print(providers_list)
+        provider_id = providers_list[0]['id']
+        print(sec_bank_token)
+        print(self.bank_token)
 
+        self.api_connector.create_new_access_x_auth(sec_bank_token, self.username, self.pin, provider_id, enc_installation_id, self.session_key, base64_encoded_json_header)
