@@ -1,6 +1,7 @@
 import pandas as pd
 import json
 from ahoi_functions import APIFunctions
+from sec_ahoi_functions import SecAPIFunctions
 import configparser
 
 
@@ -26,9 +27,9 @@ def fetch_transactions():
 def test_x_auth():
     config = configparser.ConfigParser()
     config.read('conf.ini')
-    api_functions = APIFunctions(config)
+    sec_api_functions = SecAPIFunctions(config)
 
-    api_functions.test_x_auth()
+    sec_api_functions.test_x_auth()
 
 
 
