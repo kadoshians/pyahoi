@@ -3,12 +3,9 @@ import base64
 import json
 from datetime import datetime
 import uuid
-
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
-from Crypto.Random import get_random_bytes
-import os
-import hashlib
+
 
 class APIConnector:
 
@@ -37,35 +34,24 @@ class APIConnector:
         res_dict = json.loads(res.text)
         return res_dict['id'], res_dict['state']
 
-    def create_new_access_x_auth(self, bank_token, username, pin, provider_id, session_key, base64_encoded_json_header):
+    def create_new_access_x_auth(self, banking_token, username, pin, provider_id, session_key, base64_encoded_json_header):
         iv = 16 * b'\x00'
         cipher = AES.new(session_key, AES.MODE_CBC, iv=iv)
 
-        username = username.encode('UTF-8')
-        pin = pin.encode('UTF-8')
-        print(pin)
-        print('username len ' + str(len(username)))
-        username_padded = username + (AES.block_size - (len(username) % AES.block_size)) * b'\x00'
-        print(username_padded)
-        pin_padded = pin + (AES.block_size - (len(pin) % AES.block_size)) * b'\x00'
-        print(pin_padded)
-        enc_username = cipher.encrypt(username_padded)
-        ## Anschauen
-        enc_pin = cipher.encrypt(pin_padded)
+        enc_username = cipher.encrypt(pad(username.encode(), AES.block_size))
+
+        enc_pin = cipher.encrypt(pad(pin.encode(), AES.block_size))
 
         enc_username_base64 = base64.urlsafe_b64encode(enc_username).decode()
         enc_pin_base64 = base64.urlsafe_b64encode(enc_pin).decode()
-        print(len(enc_pin_base64))
-        print(enc_pin_base64)
-        print(enc_pin_base64[:5])
 
         headers = {
-            'Authorization': 'Bearer ' + bank_token,
+            'Authorization': 'Bearer ' + banking_token,
             'X-Ahoi-Session-Security': base64_encoded_json_header,
             'Content-Type': 'application/json'
 
         }
-        data = "{\"type\":\"BankAccess\",\"providerId\":\"%s\",\"accessFields\":{\"USERNAME\":\"%s\",\"PIN\":\"%s\"}}" %(provider_id, enc_username_base64, enc_pin_base64[:5])
+        data = "{\"type\":\"BankAccess\",\"providerId\":\"%s\",\"accessFields\":{\"USERNAME\":\"%s\",\"PIN\":\"%s\"}}" %(provider_id, enc_username_base64, enc_pin_base64)
 
         res = requests.post(self.url + '/ahoi/api/v2/accesses/async', headers=headers, data=data)
         res_dict = json.loads(res.text)
@@ -242,16 +228,6 @@ class APIConnector:
         res_dict = json.loads(res.text)
         return res_dict
 
-    def get_providers_x_auth(self, bank_token, base64_encoded_session_header):
-        headers = {
-            'authorization': 'Bearer ' + bank_token,
-            'X-Ahoi_Session_Security': base64_encoded_session_header
-        }
-
-        res = requests.get(self.url + '/ahoi/api/v2/providers/', headers=headers)
-        res_dict = json.loads(res.text)
-        return res_dict
-
     # Registration
     def get_banking_token(self, install_id, client_id, client_secret):
         nonce = uuid.uuid4().hex
@@ -287,7 +263,7 @@ class APIConnector:
         current_time_string = current_time.strftime('%Y-%m-%dT%H:%M:%S.%fZ')[:-4]+'Z'
 
         x_auth_ahoi_json = "{\"installationId\":\"%s\",\"nonce\":\"%s\",\"timestamp\":\"%s\"}" % (
-        install_id, nonce, current_time_string)
+        install_id.decode(), nonce, current_time_string)
 
         #iv_credentials = 16 * b'\00'
         #cipher_credentials = AES.new(session_key, AES.MODE_CBC, iv=iv_credentials)
@@ -320,7 +296,7 @@ class APIConnector:
 
         cipher = AES.new(key, AES.MODE_CBC, iv=iv)
 
-        enc_x_auth_ahoi_json = iv + cipher.encrypt(pad(x_auth_ahoi_json.encode(), AES.block_size))
+        enc_x_auth_ahoi_json = cipher.encrypt(pad(x_auth_ahoi_json.encode(), AES.block_size))
 
         x_auth_base64 = base64.urlsafe_b64encode(enc_x_auth_ahoi_json).decode()
 

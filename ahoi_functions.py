@@ -36,7 +36,7 @@ class APIFunctions():
 
         # get the bank_token for the first time
         res_dict = self.api_connector.get_banking_token(self.installation_id, self.client_id, self.client_secret)
-        self.bank_token = res_dict['access_token']
+        self.banking_token = res_dict['access_token']
         bank_interval = int(res_dict['expires_in'])
 
         # start a daemon to check the validity of the bank_token
@@ -56,30 +56,30 @@ class APIFunctions():
         while True:
             time.sleep(interval)
             res_dict = self.api_connector.get_banking_token(self.installation_id, self.client_id, self.client_secret)
-            self.bank_token = res_dict['access_token']
+            self.banking_token = res_dict['access_token']
             interval = int(res_dict['expires_in'])
             print("New bank_token generated")
 
     def get_transactions(self, iban, username, pin, start, end):
-        providers_list = self.api_connector.get_providers(self.bank_token)
+        providers_list = self.api_connector.get_providers(self.banking_token)
         provider_id = providers_list[0]['id']
         print(f"providerId: {provider_id}")
 
         in_progress = True
         while in_progress:
-            task_id, state = self.api_connector.create_new_access(self.bank_token, username, pin, provider_id)
+            task_id, state = self.api_connector.create_new_access(self.banking_token, username, pin, provider_id)
             in_progress = (state == 'IN_PROGRESS')
         print(f"taskId: {task_id}, state: {state}")
 
         in_progress = True
         while in_progress:
-            response = self.api_connector.fetch_state_of_task(self.bank_token, task_id)
+            response = self.api_connector.fetch_state_of_task(self.banking_token, task_id)
             in_progress = (response['state'] == 'IN_PROGRESS')
             time.sleep(2)
         access_id = response['accessId']
         print(f"accessId: {access_id}")
 
-        accounts = self.api_connector.list_accounts(self.bank_token, access_id)
+        accounts = self.api_connector.list_accounts(self.banking_token, access_id)
         print(accounts)
 
         transactions = dict()
@@ -89,7 +89,7 @@ class APIFunctions():
 
             if iban_tmp == iban:
                 # use iban for identification because account_id is not static
-                transactions[iban] = self.api_connector.list_transactions_for_account(self.bank_token, access_id, account_id, 1000, 0, start, end)
+                transactions[iban] = self.api_connector.list_transactions_for_account(self.banking_token, access_id, account_id, 1000, 0, start, end)
 
         return transactions
 
