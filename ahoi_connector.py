@@ -3,6 +3,7 @@ import base64
 import json
 from datetime import datetime
 import uuid
+
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
 from Crypto.Random import get_random_bytes
@@ -241,6 +242,16 @@ class APIConnector:
         res_dict = json.loads(res.text)
         return res_dict
 
+    def get_providers_x_auth(self, bank_token, base64_encoded_session_header):
+        headers = {
+            'authorization': 'Bearer ' + bank_token,
+            'X-Ahoi_Session_Security': base64_encoded_session_header
+        }
+
+        res = requests.get(self.url + '/ahoi/api/v2/providers/', headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
     # Registration
     def get_banking_token(self, install_id, client_id, client_secret):
         nonce = uuid.uuid4().hex
@@ -265,7 +276,11 @@ class APIConnector:
         res_dict = json.loads(res.text)
         return res_dict
 
-    def get_banking_token_x_auth(self, install_id, client_id, client_secret, app_secret, app_secret_key, base64_encoded_session_header, session_key):
+    def get_banking_token_x_auth(self, install_id, client_id, client_secret, app_secret_iv, app_secret_key, base64_encoded_session_header):
+
+        credentials = client_id + ":" + client_secret
+        credentials_base64 = base64.b64encode(credentials.encode()).decode()
+
         nonce = uuid.uuid4().hex
 
         current_time = datetime.now().utcnow()
@@ -274,13 +289,19 @@ class APIConnector:
         x_auth_ahoi_json = "{\"installationId\":\"%s\",\"nonce\":\"%s\",\"timestamp\":\"%s\"}" % (
         install_id, nonce, current_time_string)
 
-        credentials = client_id + ":" + client_secret
-        credentials_base64 = base64.b64encode(credentials.encode()).decode()
+        #iv_credentials = 16 * b'\00'
+        #cipher_credentials = AES.new(session_key, AES.MODE_CBC, iv=iv_credentials)
 
-        #key = (app_secret_key.encode()).decode()
+        #enc_credentials = cipher_credentials.encrypt(pad(credentials.encode(), AES.block_size))
 
-        #iv = (app_secret.encode()).decode()
+        #credentials_base64 = base64.urlsafe_b64encode(enc_credentials).decode()
 
+        # 1
+        iv = base64.urlsafe_b64decode(app_secret_iv + '==')
+        key = base64.urlsafe_b64decode(app_secret_key + '==')
+
+
+        # 2
         IV_SIZE = 16  # 128 bit, fixed for the AES algorithm
         KEY_SIZE = 32  # 256 bit meaning AES-256, can also be 128 or 192 bits
         SALT_SIZE = 16  # This size is arbitrary
@@ -289,20 +310,20 @@ class APIConnector:
         #salt = os.urandom(SALT_SIZE)
         #derived = hashlib.pbkdf2_hmac('sha256', password, salt, 100000,
         #                              dklen=IV_SIZE + KEY_SIZE)
-        iv = base64.urlsafe_b64decode(app_secret + '==')
-        key = base64.urlsafe_b64decode(app_secret_key + '==')
-        #key = derived[IV_SIZE:]
+        # iv = derived[:IV_SIZE]
+        # kex = derived[:IV_SIZE:]
+
+        # 3
+        #key = hashlib.sha128(app_secret_key.encode()).digest()
+        #iv = base64.urlsafe_b64decode(_iv + "==")
+
 
         cipher = AES.new(key, AES.MODE_CBC, iv=iv)
 
-        x_auth_ahoi_json = x_auth_ahoi_json.encode()
-
-        x_auth_ahoi_json_pad = x_auth_ahoi_json + (AES.block_size - (len(x_auth_ahoi_json) % AES.block_size)) * b'\x00'
-
-        enc_x_auth_ahoi_json = cipher.encrypt(x_auth_ahoi_json_pad)
+        enc_x_auth_ahoi_json = iv + cipher.encrypt(pad(x_auth_ahoi_json.encode(), AES.block_size))
 
         x_auth_base64 = base64.urlsafe_b64encode(enc_x_auth_ahoi_json).decode()
-        print(x_auth_base64[:-2])
+
         headers = {
             'Authorization': 'Basic ' + credentials_base64,
             'X-Authorization-Ahoi': x_auth_base64,

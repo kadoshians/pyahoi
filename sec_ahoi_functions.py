@@ -5,6 +5,7 @@ from ahoi_connector import APIConnector
 from Crypto.Random import get_random_bytes
 from Crypto.Cipher import AES, PKCS1_OAEP, PKCS1_v1_5
 from Crypto.PublicKey import RSA
+from Crypto.Util.Padding import pad
 from Crypto.Hash import SHA256, SHA1
 from Crypto.Signature import pss
 from Crypto import Random
@@ -24,7 +25,7 @@ class SecAPIFunctions():
         oauth = config['OAUTH']
         self.client_id = oauth['clientID']
         self.client_secret = oauth['clientSecret']
-        self.app_secret = oauth['appSecret']
+        self.app_secret_iv = oauth['appSecret']
         self.app_secret_key = oauth['appSecretKey']
         self.session_key = self.__gen_symmetric_key()
 
@@ -64,7 +65,7 @@ class SecAPIFunctions():
 
         # Decode and parse public_key
         public_key = base64.urlsafe_b64decode(api_public_key)
-        print(self.session_key)
+
         recipient_key = RSA.import_key(public_key)
         cipher_rsa = PKCS1_OAEP.new(recipient_key)
 
@@ -78,34 +79,36 @@ class SecAPIFunctions():
         # Encode JSON to create header value
         header_template = "{\"publicKeyId\":\"%s\",\"sessionKey\":\"%s\",\"keySpecification\":\"AES\"}" % (public_key_id,
                                                                                                           session_key)
-        #print(header_template)
-        base64_encoded_json_header = base64.urlsafe_b64encode(header_template.encode('UTF-8')).decode()
-        #print(base64_encoded_json_header)
+        base64_encoded_json_header = base64.urlsafe_b64encode(header_template.encode()).decode()
 
+
+        # Get and extract installation ID with session key
         enc_installation_id = self.api_connector.user_registration_x_auth(self.reg_token, base64_encoded_json_header)
 
         enc_installation_id = base64.urlsafe_b64decode(enc_installation_id + "==")
-        #print(len(enc_installation_id[:-4]))
 
         iv = 16 * b'\00'
         cipher_aes = AES.new(self.session_key, AES.MODE_CBC, iv=iv)
+        #installation_id = unpad(cipher_aes.decrypt(enc_installation_id), AES.block_size)
         installation_id = cipher_aes.decrypt(enc_installation_id)
 
+        # Fetch and decrypt banking token
         res_dict = self.api_connector.get_banking_token_x_auth(installation_id, self.client_id, self.client_secret,
-                                                              self.app_secret, self.app_secret_key, base64_encoded_json_header, self.session_key)
+                                                               self.app_secret_iv, self.app_secret_key, base64_encoded_json_header)
 
-        #sec_bank_token = res_dict['access_token']
+        sec_bank_token = res_dict['access_token']
 
-        #enc_sec_bank_token = base64.b64decode(sec_bank_token)
-        #print(len(sec_bank_token[:-12]))
-        #iv = 16 * b'\00'
-        #cipher_aes = AES.new(self.session_key, AES.MODE_CBC, iv=iv)
-        #i_sec_bank_token = cipher_aes.decrypt(enc_sec_bank_token[:-4])
+        sec_bank_token = base64.urlsafe_b64decode(sec_bank_token + "==")
 
-        #providers_list = self.api_connector.get_providers(sec_bank_token)
+        sec_bank_token_padded = sec_bank_token + (
+                    AES.block_size - (len(sec_bank_token) % AES.block_size)) * b'\x00'
 
-        #provider_id = providers_list[0]['id']
+        sec_bank_token = cipher_aes.decrypt(sec_bank_token_padded)
+        sec_bank_token_base64 = base64.urlsafe_b64decode(sec_bank_token)
 
+        # Get providerID
+        providers_list = self.api_connector.get_providers_x_auth(sec_bank_token, base64_encoded_json_header)
 
+        provider_id = providers_list[0]['id']
 
-        #self.api_connector.create_new_access_x_auth(sec_bank_token, self.username, self.pin, provider_id, self.session_key, base64_encoded_json_header)
+        self.api_connector.create_new_access_x_auth(sec_bank_token, self.username, self.pin, provider_id, self.session_key, base64_encoded_json_header)

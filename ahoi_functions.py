@@ -16,7 +16,7 @@ class APIFunctions():
         oauth = config['OAUTH']
         self.client_id = oauth['clientID']
         self.client_secret = oauth['clientSecret']
-        self.app_secret = oauth['appSecret']
+        self.app_secret_iv = oauth['appSecret']
         self.app_secret_key = oauth['appSecretKey']
 
         self.api_connector = APIConnector(self.url)
@@ -60,7 +60,7 @@ class APIFunctions():
             interval = int(res_dict['expires_in'])
             print("New bank_token generated")
 
-    def get_transactions(self, iban, username, pin):
+    def get_transactions(self, iban, username, pin, start, end):
         providers_list = self.api_connector.get_providers(self.bank_token)
         provider_id = providers_list[0]['id']
         print(f"providerId: {provider_id}")
@@ -89,7 +89,7 @@ class APIFunctions():
 
             if iban_tmp == iban:
                 # use iban for identification because account_id is not static
-                transactions[iban] = self.api_connector.get_transactions(self.bank_token, access_id, account_id)
+                transactions[iban] = self.api_connector.list_transactions_for_account(self.bank_token, access_id, account_id, 1000, 0, start, end)
 
         return transactions
 
@@ -98,7 +98,9 @@ def get_transactions(iban):
     if request.method == 'GET':
         username = request.args.get('username')
         pin = request.args.get('pin')
-        transactions = api_functions.get_transactions(iban, username, pin)
+        start = request.args.get('start')
+        end = request.args.get('end')
+        transactions = api_functions.get_transactions(iban, username, pin, start, end)
         return transactions
 
 if __name__ == '__main__':
