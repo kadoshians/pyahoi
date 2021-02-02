@@ -15,8 +15,8 @@ class SecAPIFunctions():
 
     def __init__(self, config):
         general = config['GENERAL']
-        self.username = general['username']
-        self.pin = general['pin']
+        #self.username = general['username']
+        #self.pin = general['pin']
         self.url = general['url']
 
         oauth = config['OAUTH']
@@ -130,8 +130,8 @@ class SecAPIFunctions():
         # Create an access
         in_progress = True
         while in_progress:
-            task_id, state = self.api_connector.create_new_access_x_auth(self.banking_token, self.username,
-                                                                         self.pin, provider_id, self.session_key,
+            task_id, state = self.api_connector.create_new_access_x_auth(self.banking_token, username,
+                                                                         pin, provider_id, self.session_key,
                                                                          self.enc_json_header_base64)
             in_progress = (state == 'IN_PROGRESS')
         print(f"taskId: {task_id}, state: {state}")
