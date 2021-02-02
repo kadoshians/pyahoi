@@ -29,7 +29,7 @@ def test_x_auth():
     config.read('conf.ini')
     sec_api_functions = SecAPIFunctions(config)
 
-    sec_api_functions.test_x_auth()
+    sec_api_functions.get_transactions_x_auth()
 
 
 

@@ -36,13 +36,13 @@ class APIConnector:
 
     def create_new_access_x_auth(self, banking_token, username, pin, provider_id, session_key, base64_encoded_json_header):
         iv = 16 * b'\x00'
-        cipher = AES.new(session_key, AES.MODE_CBC, iv=iv)
 
-        enc_username = cipher.encrypt(pad(username.encode(), AES.block_size))
-
-        enc_pin = cipher.encrypt(pad(pin.encode(), AES.block_size))
-
+        cipher_username = AES.new(session_key, AES.MODE_CBC, iv=iv)
+        enc_username = cipher_username.encrypt(pad(username.encode(), AES.block_size))
         enc_username_base64 = base64.urlsafe_b64encode(enc_username).decode()
+
+        cipher_pin = AES.new(session_key, AES.MODE_CBC, iv=iv)
+        enc_pin = cipher_pin.encrypt(pad(pin.encode(), AES.block_size))
         enc_pin_base64 = base64.urlsafe_b64encode(enc_pin).decode()
 
         headers = {
@@ -55,9 +55,7 @@ class APIConnector:
 
         res = requests.post(self.url + '/ahoi/api/v2/accesses/async', headers=headers, data=data)
         res_dict = json.loads(res.text)
-        print(res_dict)
-        print("Access created " + str(res))
-        #return res_dict['id'], res_dict['state']
+        return res_dict['id'], res_dict['state']
 
     def get_access(self, bank_token, access_id):
         headers = {
@@ -265,34 +263,8 @@ class APIConnector:
         x_auth_ahoi_json = "{\"installationId\":\"%s\",\"nonce\":\"%s\",\"timestamp\":\"%s\"}" % (
         install_id.decode(), nonce, current_time_string)
 
-        #iv_credentials = 16 * b'\00'
-        #cipher_credentials = AES.new(session_key, AES.MODE_CBC, iv=iv_credentials)
-
-        #enc_credentials = cipher_credentials.encrypt(pad(credentials.encode(), AES.block_size))
-
-        #credentials_base64 = base64.urlsafe_b64encode(enc_credentials).decode()
-
-        # 1
         iv = base64.urlsafe_b64decode(app_secret_iv + '==')
         key = base64.urlsafe_b64decode(app_secret_key + '==')
-
-
-        # 2
-        IV_SIZE = 16  # 128 bit, fixed for the AES algorithm
-        KEY_SIZE = 32  # 256 bit meaning AES-256, can also be 128 or 192 bits
-        SALT_SIZE = 16  # This size is arbitrary
-
-        #password = app_secret_key.encode()
-        #salt = os.urandom(SALT_SIZE)
-        #derived = hashlib.pbkdf2_hmac('sha256', password, salt, 100000,
-        #                              dklen=IV_SIZE + KEY_SIZE)
-        # iv = derived[:IV_SIZE]
-        # kex = derived[:IV_SIZE:]
-
-        # 3
-        #key = hashlib.sha128(app_secret_key.encode()).digest()
-        #iv = base64.urlsafe_b64decode(_iv + "==")
-
 
         cipher = AES.new(key, AES.MODE_CBC, iv=iv)
 
@@ -308,8 +280,6 @@ class APIConnector:
 
         res = requests.post(self.url + '/auth/v1/oauth/token?grant_type=client_credentials', headers=headers)
         res_dict = json.loads(res.text)
-        print(res_dict)
-        print("get banking token " + str(res))
         return res_dict
 
 
@@ -331,8 +301,6 @@ class APIConnector:
 
         res = requests.post(self.url + '/ahoi/api/v2/registration', headers=headers)
         res_dict = json.loads(res.text)
-        print("user registered " + str(res))
-        print(res_dict)
         install_id = res_dict['installation']
         return install_id
 
