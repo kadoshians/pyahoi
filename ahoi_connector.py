@@ -55,6 +55,7 @@ class APIConnector:
 
         res = requests.post(self.url + '/ahoi/api/v2/accesses/async', headers=headers, data=data)
         res_dict = json.loads(res.text)
+        print(res_dict)
         return res_dict['id'], res_dict['state']
 
     def get_access(self, bank_token, access_id):

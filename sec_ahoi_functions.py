@@ -24,7 +24,7 @@ class SecAPIFunctions():
         self.client_secret = oauth['clientSecret']
         self.app_secret_iv = oauth['appSecret']
         self.app_secret_key = oauth['appSecretKey']
-        self.session_key = self.gen_symmetric_key()
+        self.symmetric_key = self.__gen_symmetric_key()
 
         self.api_connector = APIConnector(self.url)
 
@@ -39,7 +39,7 @@ class SecAPIFunctions():
         thread.start()
 
         # Get public_api_key and id as well as X-Ahoi-Session-Security header
-        self.public_api_key, self.public_api_key_id = self.get_public_key_and_id()
+        self.public_api_key, self.public_api_key_id = self.__get_public_key_and_id()
         self.enc_json_header_base64 = self.__get_session_security_header()
 
         # Get the installation_id for the application
@@ -57,7 +57,7 @@ class SecAPIFunctions():
 
     def __gen_reg_token(self, interval):
         while True:
-            time.sleep(interval)
+            time.sleep(interval-20)
             res_dict = self.api_connector.generate_registration_token(self.client_id, self.client_secret)
             self.reg_token = res_dict['access_token']
             interval = int(res_dict['expires_in'])
@@ -65,7 +65,7 @@ class SecAPIFunctions():
 
     def __gen_bank_token(self, interval):
         while True:
-            time.sleep(interval)
+            time.sleep(interval-20)
             res_dict = self.api_connector.get_banking_token_x_auth(self.installation_id, self.client_id,
                                                                    self.client_secret, self.app_secret_iv,
                                                                    self.app_secret_key, self.enc_json_header_base64)
@@ -73,9 +73,36 @@ class SecAPIFunctions():
             interval = int(res_dict['expires_in'])
             print("New bank_token generated")
 
+    def __get_public_key_and_id(self):
+        # Get public_key
+        response = self.api_connector.request_api_public_key(self.reg_token)
+        api_public_key = response['publicKey']['value']
+        public_key_id = response['keyId']
+
+        return api_public_key, public_key_id
+
+    def __gen_symmetric_key(self):
+        # Generate a simple symmetricKey (AES)
+        symmetric_key = get_random_bytes(32)
+        return symmetric_key
+
+    def __encrypt_symmetric_key(self, public_api_key):
+        # Decode and parse public_key
+        public_key = base64.urlsafe_b64decode(public_api_key)
+        rsa_key = RSA.import_key(public_key)
+        cipher_rsa = PKCS1_OAEP.new(rsa_key)
+
+        # encrypt symmetric_key with the received public_key
+        enc_session_key = cipher_rsa.encrypt(self.symmetric_key)
+
+        # Encode Base64 url-safe
+        enc_session_key_base64 = base64.urlsafe_b64encode(enc_session_key).decode()
+
+        return enc_session_key_base64
+
     def __get_session_security_header(self):
         # Get an X-Ahoi-Session-Security header
-        enc_session_key = self.encrypt_symmetric_key(self.public_api_key)
+        enc_session_key = self.__encrypt_symmetric_key(self.public_api_key)
 
         # Encode JSON to create header value
         header_template = "{\"publicKeyId\":\"%s\",\"sessionKey\":\"%s\",\"keySpecification\":\"AES\"}" % (self.public_api_key_id,
@@ -84,24 +111,10 @@ class SecAPIFunctions():
 
         return enc_json_header_base64
 
-    def gen_symmetric_key(self):
-        # Generate a simple symmetricKey (AES)
-        symmetric_key = get_random_bytes(32)
-        return symmetric_key
-
-    def encrypt_symmetric_key(self, public_api_key):
-        # Decode and parse public_key
-        public_key = base64.urlsafe_b64decode(public_api_key)
-        rsa_key = RSA.import_key(public_key)
-        cipher_rsa = PKCS1_OAEP.new(rsa_key)
-
-        # encrypt symmetric_key with the received public_key
-        enc_session_key = cipher_rsa.encrypt(self.session_key)
-
-        # Encode Base64 url-safe
-        enc_session_key_base64 = base64.urlsafe_b64encode(enc_session_key).decode()
-
-        return enc_session_key_base64
+    def x_auth(self):
+        self.public_api_key, self.public_api_key_id = self.__get_public_key_and_id()
+        self.symmetric_key = self.__gen_symmetric_key()
+        self.enc_json_header_base64 = self.__get_session_security_header()
 
     def get_installation_id(self):
         # Get and extract installation ID with session key
@@ -109,20 +122,15 @@ class SecAPIFunctions():
         enc_installation_id = base64.urlsafe_b64decode(enc_installation_id + "==")
 
         iv = 16 * b'\00'
-        cipher_aes = AES.new(self.session_key, AES.MODE_CBC, iv=iv)
+        cipher_aes = AES.new(self.symmetric_key, AES.MODE_CBC, iv=iv)
         installation_id = unpad(cipher_aes.decrypt(enc_installation_id), AES.block_size)
 
         return installation_id
 
-    def get_public_key_and_id(self):
-        # Get public_key
-        response = self.api_connector.request_api_public_key(self.reg_token)
-        api_public_key = response['publicKey']['value']
-        public_key_id = response['keyId']
-
-        return api_public_key, public_key_id
-
     def get_transactions_x_auth(self, iban, username, pin, start, end):
+        # Refresh all x_auth dependencies
+        self.x_auth()
+
         # Get providerID
         providers_list = self.api_connector.get_providers(self.banking_token)
         provider_id = providers_list[0]['id']
@@ -131,7 +139,7 @@ class SecAPIFunctions():
         in_progress = True
         while in_progress:
             task_id, state = self.api_connector.create_new_access_x_auth(self.banking_token, username,
-                                                                         pin, provider_id, self.session_key,
+                                                                         pin, provider_id, self.symmetric_key,
                                                                          self.enc_json_header_base64)
             in_progress = (state == 'IN_PROGRESS')
         print(f"taskId: {task_id}, state: {state}")
