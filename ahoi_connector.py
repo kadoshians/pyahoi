@@ -309,9 +309,7 @@ class APIConnector:
 
         }
 
-        res = requests.delete(self.url + "/ahoi/api/v2/registration", headers=headers)
-        res_dict = json.loads(res.text)
-        return res_dict
+        requests.delete(self.url + "/ahoi/api/v2/registration", headers=headers)
 
     def request_api_jwk_public_key(self, reg_token):
         headers = {

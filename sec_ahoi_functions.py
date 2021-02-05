@@ -162,7 +162,10 @@ class SecAPIFunctions():
             iban_tmp = account['iban']
 
             if iban_tmp == iban:
-                # use iban for identification because account_id is not static
+                # Refresh account to get the newest transactions
+                self.api_connector.refresh_account(self.banking_token, access_id, account_id)
+
+                # Use iban for identification because account_id is not static
                 transactions[iban] = self.api_connector.list_transactions_for_account(self.banking_token, access_id,
                                                                                       account_id, 1000, 0, start, end)
         return transactions
