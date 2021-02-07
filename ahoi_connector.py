@@ -3,9 +3,8 @@ import base64
 import json
 from datetime import datetime
 import uuid
-
-
-
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad
 
 
 class APIConnector:
@@ -30,6 +29,29 @@ class APIConnector:
             'Content-Type': 'application/json'
         }
         data = "{\"providerId\":\"%s\",\"type\":\"BankAccess\",\"accessFields\":{\"USERNAME\":\"%s\",\"PIN\":\"%s\"}}" %(provider_id, username, pin)
+
+        res = requests.post(self.url + '/ahoi/api/v2/accesses/async', headers=headers, data=data)
+        res_dict = json.loads(res.text)
+        return res_dict['id'], res_dict['state']
+
+    def create_new_access_x_auth(self, banking_token, username, pin, provider_id, session_key, base64_encoded_json_header):
+        iv = 16 * b'\x00'
+
+        cipher_username = AES.new(session_key, AES.MODE_CBC, iv=iv)
+        enc_username = cipher_username.encrypt(pad(username.encode(), AES.block_size))
+        enc_username_base64 = base64.urlsafe_b64encode(enc_username).decode()
+
+        cipher_pin = AES.new(session_key, AES.MODE_CBC, iv=iv)
+        enc_pin = cipher_pin.encrypt(pad(pin.encode(), AES.block_size))
+        enc_pin_base64 = base64.urlsafe_b64encode(enc_pin).decode()
+
+        headers = {
+            'Authorization': 'Bearer ' + banking_token,
+            'X-Ahoi-Session-Security': base64_encoded_json_header,
+            'Content-Type': 'application/json'
+
+        }
+        data = "{\"type\":\"BankAccess\",\"providerId\":\"%s\",\"accessFields\":{\"USERNAME\":\"%s\",\"PIN\":\"%s\"}}" %(provider_id, enc_username_base64, enc_pin_base64)
 
         res = requests.post(self.url + '/ahoi/api/v2/accesses/async', headers=headers, data=data)
         res_dict = json.loads(res.text)
@@ -205,7 +227,7 @@ class APIConnector:
         return res_dict
 
     # Registration
-    def get_banking_token(self, install_id, client_id, client_secret, username, pin):
+    def get_banking_token(self, install_id, client_id, client_secret):
         nonce = uuid.uuid4().hex
 
         current_time = datetime.now().utcnow()
@@ -221,18 +243,45 @@ class APIConnector:
 
         headers = {
             'Authorization': 'Basic ' + credentials_base64,
-            'X-Authorization-Ahoi': x_auth_base64
+            'X-Authorization-Ahoi': x_auth_base64,
         }
 
-        data = {
-            'grant_type': 'client_credentials',
-            'username': username,
-            'password': pin
-        }
-
-        res = requests.post(self.url + '/auth/v1/oauth/token', headers=headers, data=data)
+        res = requests.post(self.url + '/auth/v1/oauth/token?grant_type=client_credentials', headers=headers)
         res_dict = json.loads(res.text)
         return res_dict
+
+    def get_banking_token_x_auth(self, install_id, client_id, client_secret, app_secret_iv, app_secret_key, base64_encoded_session_header):
+
+        credentials = client_id + ":" + client_secret
+        credentials_base64 = base64.b64encode(credentials.encode()).decode()
+
+        nonce = uuid.uuid4().hex
+
+        current_time = datetime.now().utcnow()
+        current_time_string = current_time.strftime('%Y-%m-%dT%H:%M:%S.%fZ')[:-4]+'Z'
+
+        x_auth_ahoi_json = "{\"installationId\":\"%s\",\"nonce\":\"%s\",\"timestamp\":\"%s\"}" % (
+        install_id.decode(), nonce, current_time_string)
+
+        iv = base64.urlsafe_b64decode(app_secret_iv + '==')
+        key = base64.urlsafe_b64decode(app_secret_key + '==')
+
+        cipher = AES.new(key, AES.MODE_CBC, iv=iv)
+
+        enc_x_auth_ahoi_json = cipher.encrypt(pad(x_auth_ahoi_json.encode(), AES.block_size))
+
+        x_auth_base64 = base64.urlsafe_b64encode(enc_x_auth_ahoi_json).decode()
+
+        headers = {
+            'Authorization': 'Basic ' + credentials_base64,
+            'X-Authorization-Ahoi': x_auth_base64,
+            'X-Ahoi_Session_Security': base64_encoded_session_header
+        }
+
+        res = requests.post(self.url + '/auth/v1/oauth/token?grant_type=client_credentials', headers=headers)
+        res_dict = json.loads(res.text)
+        return res_dict
+
 
     def user_registration(self, reg_token):
         headers = {
@@ -247,7 +296,7 @@ class APIConnector:
     def user_registration_x_auth(self, reg_token, base64_encoded_session_header):
         headers = {
             'authorization': 'Bearer ' + reg_token,
-            'X-Ahoi_Session_security': base64_encoded_session_header
+            'X-Ahoi-Session-security': base64_encoded_session_header
         }
 
         res = requests.post(self.url + '/ahoi/api/v2/registration', headers=headers)
@@ -260,31 +309,27 @@ class APIConnector:
 
         }
 
-        res = requests.delete( self.url + "/ahoi/api/v2/registration", headers=headers)
-        res_dict = json.loads(res.text)
-        return res_dict
+        requests.delete(self.url + "/ahoi/api/v2/registration", headers=headers)
 
-    def request_api_jwk_public_key(self, bank_token):
+    def request_api_jwk_public_key(self, reg_token):
         headers = {
-            'content-type': "application/json",
-            'authorization': "Bearer " + bank_token
+            'authorization': "Bearer " + reg_token
         }
 
         res = requests.get(self.url + "/ahoi/api/v2/registration/jwk", headers=headers)
         res_dict = json.loads(res.text)
         return res_dict
 
-    def request_api_public_key(self, bank_token):
+    def request_api_public_key(self, reg_token):
         headers = {
-            'content-type': "application/json",
-            'authorization': "Bearer " + bank_token
+            'authorization': "Bearer " + reg_token
         }
 
         res = requests.get(self.url + "/ahoi/api/v2/registration/keys", headers=headers)
         res_dict = json.loads(res.text)
         return res_dict
 
-    def generate_registration_token(self, client_id, client_secret, username, pin):
+    def generate_registration_token(self, client_id, client_secret):
         credentials = client_id + ":" + client_secret
 
         credentials_base64 = base64.b64encode(credentials.encode()).decode()
@@ -293,13 +338,7 @@ class APIConnector:
             'authorization': 'Basic ' + credentials_base64
         }
 
-        data = {
-            'grant_type': 'client_credentials',
-            'username': username,
-            'password': pin
-        }
-
-        res = requests.post(self.url + '/auth/v1/oauth/token?', headers=headers, data=data)
+        res = requests.post(self.url + '/auth/v1/oauth/token?grant_type=client_credentials', headers=headers)
         res_dict = json.loads(res.text)
         return res_dict
 
